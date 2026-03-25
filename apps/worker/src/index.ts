@@ -118,28 +118,6 @@ h1{font-size:28px;font-weight:800;margin-bottom:8px}
 </html>`);
 });
 
-
-// Temporary migration endpoint — remove after running
-app.post('/api/migrate/add-metadata-column', async (c) => {
-  try {
-    const db = c.env.DB;
-    // Check if column already exists
-    const info = await db.prepare("PRAGMA table_info(friends)").all();
-    const columns = info.results.map((r: any) => r.name);
-    if (columns.includes('metadata')) {
-      return c.json({ success: true, message: 'metadata column already exists', columns });
-    }
-    // Add metadata column
-    await db.prepare("ALTER TABLE friends ADD COLUMN metadata TEXT DEFAULT '{}'").run();
-    // Verify
-    const info2 = await db.prepare("PRAGMA table_info(friends)").all();
-    return c.json({ success: true, message: 'metadata column added', columns: info2.results.map((r: any) => r.name) });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return c.json({ success: false, error: msg }, 500);
-  }
-});
-
 // 404 fallback
 app.notFound((c) => c.json({ success: false, error: 'Not found' }, 404));
 
