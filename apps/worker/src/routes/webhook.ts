@@ -1,3 +1,4 @@
+import { generateAiReply } from '../services/ai-reply.js';
 import { Hono } from 'hono';
 import { verifySignature, LineClient } from '@line-crm/line-sdk';
 import type { WebhookRequestBody, WebhookEvent, TextEventMessage } from '@line-crm/line-sdk';
@@ -66,7 +67,7 @@ webhook.post('/webhook', async (c) => {
   const processingPromise = (async () => {
     for (const event of body.events) {
       try {
-        await handleEvent(db, lineClient, event, channelAccessToken, matchedAccountId, c.env.WORKER_URL || new URL(c.req.url).origin);
+        await handleEvent(db, lineClient, event, channelAccessToken, matchedAccountId, c.env.WORKER_URL || new URL(c.req.url).origin, c.env.ANTHROPIC_API_KEY);
       } catch (err) {
         console.error('Error handling webhook event:', err);
       }
@@ -85,6 +86,7 @@ async function handleEvent(
   lineAccessToken: string,
   lineAccountId: string | null = null,
   workerUrl?: string,
+  anthropicKey?: string,
 ): Promise<void> {
   if (event.type === 'follow') {
     const userId =
@@ -292,6 +294,76 @@ async function handleEvent(
         matched = true;
         break;
       }
+    }
+
+
+
+    // AI自動応答（キーワード未マッチ時）
+    if (!matched && event.replyToken && anthropicKey) {
+      try {
+        const aiReply = await generateAiReply(incomingText, anthropicKey, friend.display_name);
+        if (aiReply) {
+          await lineClient.replyMessage(event.replyToken, [{ type: 'text', text: aiReply }]);
+          const aiLogId = crypto.randomUUID();
+          await db
+            .prepare(
+              `INSERT INTO messages_log (id, friend_id, direction, message_type, content, broadcast_id, scenario_step_id, created_at)
+               VALUES (?, ?, 'outgoing', 'text', ?, NULL, NULL, ?)`
+            )
+            .bind(aiLogId, friend.id, aiReply, jstNow())
+            .run();
+          matched = true;
+        }
+      } catch (aiErr) {
+        console.error('AI reply failed:', aiErr);
+      }
+    }
+
+
+    // 初回問い合わせタグ自動付与
+    const firstTimerKeywords = ['利用方法', '使い方', '初めて', 'はじめて', '見学', 'ドロップイン', '始め', '利用したい', '行きたい', '行ってみたい', 'どんなところ', 'どんな場所', '雰囲気', '入り方', '入口', 'チェックイン', 'アプリ', 'いいオフィス'];
+    const isFirstTimer = firstTimerKeywords.some(kw => incomingText.includes(kw));
+    if (isFirstTimer) {
+      try {
+        const existingFtTag = await db
+          .prepare('SELECT 1 FROM friend_tags WHERE friend_id = ? AND tag_id = ?')
+          .bind(friend.id, '78eb85f3-6786-424d-aa46-0944488854b9')
+          .first();
+        if (!existingFtTag) {
+          await db
+            .prepare('INSERT OR IGNORE INTO friend_tags (friend_id, tag_id) VALUES (?, ?)')
+            .bind(friend.id, '78eb85f3-6786-424d-aa46-0944488854b9')
+            .run();
+
+          // Enroll in tag_added scenarios
+          const tagScenarios = await db
+            .prepare("SELECT id FROM scenarios WHERE trigger_type = 'tag_added' AND trigger_tag_id = ? AND is_active = 1")
+            .bind('78eb85f3-6786-424d-aa46-0944488854b9')
+            .all<{ id: string }>();
+          for (const ts of tagScenarios.results) {
+            const alreadyEnrolled = await db
+              .prepare('SELECT id FROM friend_scenarios WHERE friend_id = ? AND scenario_id = ?')
+              .bind(friend.id, ts.id)
+              .first();
+            if (!alreadyEnrolled) {
+              const fsId = crypto.randomUUID();
+              const firstStepRow = await db
+                .prepare('SELECT delay_minutes FROM scenario_steps WHERE scenario_id = ? ORDER BY step_order ASC LIMIT 1')
+                .bind(ts.id)
+                .first<{ delay_minutes: number }>();
+              const delayMs = (firstStepRow?.delay_minutes || 1440) * 60_000;
+              const nextDate = new Date(Date.now() + 9 * 3600_000 + delayMs);
+              const h = nextDate.getUTCHours();
+              if (h < 9 || h >= 21) { if (h >= 21) nextDate.setUTCDate(nextDate.getUTCDate() + 1); nextDate.setUTCHours(9, 0, 0, 0); }
+              const nextStr = nextDate.toISOString().slice(0, -1) + '+09:00';
+              await db
+                .prepare("INSERT INTO friend_scenarios (id, friend_id, scenario_id, current_step, status, next_delivery_at, started_at) VALUES (?, ?, ?, 0, 'active', ?, ?)")
+                .bind(fsId, friend.id, ts.id, nextStr, jstNow())
+                .run();
+            }
+          }
+        }
+      } catch (ftErr) { console.error('First-timer tag error:', ftErr); }
     }
 
     // イベントバス発火: message_received
