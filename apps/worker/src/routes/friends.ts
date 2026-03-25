@@ -242,7 +242,7 @@ friends.put('/api/friends/:id/metadata', async (c) => {
     }
 
     const body = await c.req.json<Record<string, unknown>>();
-    const existing = JSON.parse(friend.metadata || '{}');
+    const existing = JSON.parse(friend.metadata ?? '{}');
     const merged = { ...existing, ...body };
     const now = jstNow();
 
@@ -262,8 +262,47 @@ friends.put('/api/friends/:id/metadata', async (c) => {
       },
     });
   } catch (err) {
-    console.error('PUT /api/friends/:id/metadata error:', err);
-    return c.json({ success: false, error: 'Internal server error' }, 500);
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('PUT /api/friends/:id/metadata error:', msg, err);
+    return c.json({ success: false, error: msg }, 500);
+  }
+});
+
+// PATCH /api/friends/:id/metadata - merge metadata fields (alias)
+friends.patch('/api/friends/:id/metadata', async (c) => {
+  try {
+    const friendId = c.req.param('id');
+    const db = c.env.DB;
+
+    const friend = await getFriendById(db, friendId);
+    if (!friend) {
+      return c.json({ success: false, error: 'Friend not found' }, 404);
+    }
+
+    const body = await c.req.json<Record<string, unknown>>();
+    const existing = JSON.parse(friend.metadata ?? '{}');
+    const merged = { ...existing, ...body };
+    const now = jstNow();
+
+    await db
+      .prepare('UPDATE friends SET metadata = ?, updated_at = ? WHERE id = ?')
+      .bind(JSON.stringify(merged), now, friendId)
+      .run();
+
+    const updated = await getFriendById(db, friendId);
+    const tags = await getFriendTags(db, friendId);
+
+    return c.json({
+      success: true,
+      data: {
+        ...serializeFriend(updated!),
+        tags: tags.map(serializeTag),
+      },
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('PATCH /api/friends/:id/metadata error:', msg, err);
+    return c.json({ success: false, error: msg }, 500);
   }
 });
 
