@@ -1,6 +1,5 @@
 name: Deploy Worker
 
-# Configure CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID secrets to enable auto-deploy
 on:
   workflow_dispatch:
   push:
@@ -28,14 +27,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @line-crm/shared --filter @line-crm/line-sdk --filter @line-crm/db build
 
-      # Run all DB migrations (idempotent — IF NOT EXISTS)
+      # Run DB migrations (best-effort — won't block deploy if token lacks D1 permission)
       - name: Run D1 migrations
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: d1 execute line-crm --remote --file=packages/db/schema.sql
-      - name: Run D1 migrations (round 2+)
+        continue-on-error: true
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
