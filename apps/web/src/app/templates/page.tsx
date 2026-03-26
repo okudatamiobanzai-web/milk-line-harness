@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { api } from '@/lib/api'
 import Header from '@/components/layout/header'
 import CcPromptButton from '@/components/cc-prompt-button'
+import FlexMessagePreview from '@/components/scenarios/flex-preview'
 
 interface Template {
   id: string
@@ -71,6 +72,7 @@ export default function TemplatesPage() {
   })
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
+  const [previewContent, setPreviewContent] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -314,10 +316,16 @@ export default function TemplatesPage() {
                   <td className="px-4 py-3">
                     <div>
                       <p className="text-sm font-medium text-gray-900">{template.name}</p>
-                      <p className="text-xs text-gray-400 mt-0.5 truncate max-w-xs">
-                        {template.messageContent.slice(0, 50)}
-                        {template.messageContent.length > 50 ? '...' : ''}
-                      </p>
+                      {template.messageType === 'flex' ? (
+                        <p className="text-xs text-orange-500 mt-0.5">
+                          Flex · {template.messageContent.length.toLocaleString()} bytes
+                        </p>
+                      ) : (
+                        <p className="text-xs text-gray-400 mt-0.5 truncate max-w-xs">
+                          {template.messageContent.slice(0, 50)}
+                          {template.messageContent.length > 50 ? '...' : ''}
+                        </p>
+                      )}
                     </div>
                   </td>
 
@@ -340,12 +348,22 @@ export default function TemplatesPage() {
 
                   {/* Actions */}
                   <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => handleDelete(template.id)}
-                      className="px-3 py-1 text-xs font-medium text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
-                    >
-                      削除
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      {template.messageType === 'flex' && (
+                        <button
+                          onClick={() => setPreviewContent(template.messageContent)}
+                          className="px-3 py-1 text-xs font-medium text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-md transition-colors"
+                        >
+                          👁 プレビュー
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDelete(template.id)}
+                        className="px-3 py-1 text-xs font-medium text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
+                      >
+                        削除
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -355,6 +373,11 @@ export default function TemplatesPage() {
         </div>
       )}
       <CcPromptButton prompts={ccPrompts} />
+
+      {/* Flex プレビューモーダル */}
+      {previewContent && (
+        <FlexMessagePreview content={previewContent} onClose={() => setPreviewContent(null)} />
+      )}
     </div>
   )
 }
