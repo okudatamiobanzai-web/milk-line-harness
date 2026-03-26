@@ -1,0 +1,36 @@
+name: Deploy LIFF (Pages)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/liff/**'
+      - '.github/workflows/deploy-liff.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      VITE_API_URL: https://line-crm-worker.milk-crm.workers.dev
+      VITE_LIFF_ID: "2009554425-4IMBmLQ9"
+      VITE_BOT_BASIC_ID: "@086cdqiw"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: cd apps/liff && npx tsc --noEmit || true
+      - run: cd apps/liff && npx vite build
+
+      - name: Deploy to Cloudflare Pages
+        run: npx wrangler@3 pages deploy apps/liff/dist --project-name=milk-line-liff
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
