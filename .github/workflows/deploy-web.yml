@@ -12,6 +12,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_API_URL: https://line-crm-worker.milk-crm.workers.dev
     steps:
       - uses: actions/checkout@v4
 
