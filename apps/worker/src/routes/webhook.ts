@@ -13,6 +13,7 @@ import {
   completeFriendScenario,
   upsertChatOnMessage,
   getLineAccounts,
+  addTagToFriend,
   jstNow,
 } from '@line-crm/db';
 import { fireEvent } from '../services/event-bus.js';
@@ -185,6 +186,69 @@ async function handleEvent(
     if (!userId) return;
 
     await updateFriendFollowStatus(db, userId, false);
+    return;
+  }
+
+
+  // ============ POSTBACK HANDLER (ステップ配信ボタンタップ) ============
+  if (event.type === 'postback') {
+    const userId = event.source.type === 'user' ? event.source.userId : undefined;
+    if (!userId) return;
+
+    const friend = await getFriendByLineUserId(db, userId);
+    if (!friend) return;
+
+    // Parse postback data: "action=tag&tag=タグ名&reply=返信テキスト&color=#hex"
+    const params = new URLSearchParams(event.postback.data);
+    const action = params.get('action');
+
+    if (action === 'tag') {
+      const tagName = params.get('tag');
+      const replyText = params.get('reply') || 'ありがとうございます！';
+      const tagColor = params.get('color') || '#0F6E56';
+      const notify = params.get('notify'); // If set, notify ryutaro
+
+      if (tagName) {
+        // Find or create the tag
+        let tag = await db.prepare('SELECT id FROM tags WHERE name = ?').bind(tagName).first<{ id: string }>();
+        if (!tag) {
+          const tagId = crypto.randomUUID();
+          await db.prepare('INSERT INTO tags (id, name, color, created_at) VALUES (?, ?, ?, ?)')
+            .bind(tagId, tagName, tagColor, new Date().toISOString()).run();
+          tag = { id: tagId };
+        }
+
+        // Add tag to friend (ignore if already exists)
+        try {
+          await addTagToFriend(db, friend.id, tag.id);
+        } catch (e) {
+          // Duplicate tag, ignore
+        }
+      }
+
+      // Reply to user
+      if (event.replyToken) {
+        try {
+          await lineClient.replyMessage(event.replyToken, [{ type: 'text', text: replyText }]);
+        } catch (e) {
+          console.error('Postback reply error:', e);
+        }
+      }
+
+      // Notify ryutaro if flagged (e.g. "一緒に何かやりたい" button)
+      if (notify === 'true') {
+        const ryutaroLineId = 'U2fd039fc2f1cbb39c27843392b8c7542';
+        try {
+          await lineClient.pushMessage(ryutaroLineId, [{
+            type: 'text',
+            text: `📢 ${friend.display_name || '匿名'}さんが「${tagName}」ボタンをタップしました！`,
+          }]);
+        } catch (e) {
+          console.error('Notify error:', e);
+        }
+      }
+    }
+
     return;
   }
 
