@@ -7,6 +7,38 @@ import CcPromptButton from '@/components/cc-prompt-button'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+// ─── Authenticated Image (fetches with Bearer token) ──────────────────────────
+
+function useAuthImage(url: string | null) {
+  const [blobUrl, setBlobUrl] = useState<string | null>(null)
+  useEffect(() => {
+    if (!url) return
+    let cancelled = false
+    let objectUrl: string | null = null
+    const apiKey = typeof window !== 'undefined' ? localStorage.getItem('lh_api_key') || '' : ''
+    fetch(url, { headers: { 'Authorization': `Bearer ${apiKey}` } })
+      .then((r) => (r.ok ? r.blob() : null))
+      .then((blob) => {
+        if (blob && !cancelled) {
+          objectUrl = URL.createObjectURL(blob)
+          setBlobUrl(objectUrl)
+        }
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [url])
+  return blobUrl
+}
+
+function AuthImage({ menuId, alt, className, style }: { menuId: string; alt: string; className?: string; style?: React.CSSProperties }) {
+  const src = useAuthImage(api.richMenus.getImageUrl(menuId))
+  if (!src) return <div className={className} style={{ ...style, background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span className="text-gray-400 text-xs">読込中...</span></div>
+  return <img src={src} alt={alt} className={className} style={style} />
+}
+
 interface RichMenuBounds {
   x: number
   y: number
@@ -725,12 +757,7 @@ export default function RichMenusPage() {
                       <div className="w-28 h-[19px] sm:w-40 sm:h-[27px] lg:w-48 lg:h-[32px] shrink-0 rounded-md overflow-hidden bg-gray-100 border border-gray-200"
                         style={{ aspectRatio: `${menu.size.width}/${menu.size.height}` }}
                       >
-                        <img
-                          src={api.richMenus.getImageUrl(menu.richMenuId)}
-                          alt={menu.name}
-                          className="w-full h-full object-cover"
-                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-                        />
+                        <AuthImage menuId={menu.richMenuId} alt={menu.name} className="w-full h-full object-cover" />
                       </div>
 
                       <div className="flex-1 min-w-0">
@@ -792,11 +819,10 @@ export default function RichMenusPage() {
                             className="relative w-full rounded-lg border border-gray-200 overflow-hidden"
                             style={{ paddingBottom: `${(menu.size.height / menu.size.width) * 100}%` }}
                           >
-                            <img
-                              src={api.richMenus.getImageUrl(menu.richMenuId)}
+                            <AuthImage
+                              menuId={menu.richMenuId}
                               alt={menu.name}
                               className="absolute inset-0 w-full h-full object-cover"
-                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
                             />
                             {/* Area overlays */}
                             {menu.areas.map((area, i) => {
