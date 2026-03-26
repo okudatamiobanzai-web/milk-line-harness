@@ -126,8 +126,22 @@ export default function ScenarioDetailClient({ scenarioId }: { scenarioId: strin
   const [sendingStepId, setSendingStepId] = useState<string | null>(null)
   const [sendResult, setSendResult] = useState<{ stepId: string; ok: boolean; message: string } | null>(null)
 
-  // 竜太郎さんのfriend ID（テスト送信先）
-  const TEST_FRIEND_ID = '85f12d27-5264-45f9-b704-4f3cb1399d19'
+  // テスト送信先
+  const [testFriends, setTestFriends] = useState<{ id: string; name: string }[]>([])
+  const [selectedFriendId, setSelectedFriendId] = useState<string>('85f12d27-5264-45f9-b704-4f3cb1399d19')
+
+  useEffect(() => {
+    // 友だちリストを取得してテスト送信先の選択肢にする
+    api.friends.list({ limit: '50' }).then(res => {
+      if (res.success && res.data?.items) {
+        const items = res.data.items.map((f: { id: string; displayName?: string | null }) => ({
+          id: f.id,
+          name: f.displayName || '(名前なし)',
+        }))
+        setTestFriends(items)
+      }
+    }).catch(() => {})
+  }, [])
 
   const loadScenario = useCallback(async () => {
     setLoading(true)
@@ -254,7 +268,7 @@ export default function ScenarioDetailClient({ scenarioId }: { scenarioId: strin
     setSendingStepId(step.id)
     setSendResult(null)
     try {
-      const res = await api.friends.sendMessage(TEST_FRIEND_ID, {
+      const res = await api.friends.sendMessage(selectedFriendId, {
         messageType: step.messageType,
         content: step.messageContent,
       })
@@ -426,18 +440,33 @@ export default function ScenarioDetailClient({ scenarioId }: { scenarioId: strin
           <h3 className="text-sm font-semibold text-gray-800">ステップ一覧</h3>
           <div className="flex items-center gap-2">
             {scenario.steps.length > 0 && (
-              <button
-                onClick={async () => {
-                  if (!confirm(`全${scenario.steps.length}ステップを自分のLINEに送信します。よいですか？`)) return
-                  for (const step of [...scenario.steps].sort((a, b) => a.stepOrder - b.stepOrder)) {
-                    await handleTestSend(step)
-                    await new Promise(r => setTimeout(r, 1000))
-                  }
-                }}
-                className="px-3 py-1.5 min-h-[44px] text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors inline-flex items-center"
-              >
-                📤 全ステップ送信
-              </button>
+              <>
+                <select
+                  value={selectedFriendId}
+                  onChange={(e) => setSelectedFriendId(e.target.value)}
+                  className="text-xs border border-gray-300 rounded-lg px-2 py-1.5 min-h-[44px] bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {testFriends.length === 0 && (
+                    <option value="85f12d27-5264-45f9-b704-4f3cb1399d19">久保竜太郎</option>
+                  )}
+                  {testFriends.map(f => (
+                    <option key={f.id} value={f.id}>{f.name}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={async () => {
+                    const target = testFriends.find(f => f.id === selectedFriendId)?.name || '選択中の友だち'
+                    if (!confirm(`全${scenario.steps.length}ステップを「${target}」に送信します。よいですか？`)) return
+                    for (const step of [...scenario.steps].sort((a, b) => a.stepOrder - b.stepOrder)) {
+                      await handleTestSend(step)
+                      await new Promise(r => setTimeout(r, 1000))
+                    }
+                  }}
+                  className="px-3 py-1.5 min-h-[44px] text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors inline-flex items-center whitespace-nowrap"
+                >
+                  📤 全ステップ送信
+                </button>
+              </>
             )}
             <button
               onClick={openAddStep}
