@@ -36,7 +36,7 @@ jobs:
         run: |
           for f in $(ls packages/db/migrations/*.sql | sort); do
             echo "▶ Running $f"
-            npx wrangler d1 execute milk-crm-db --remote --file="$f"
+            npx wrangler d1 execute line-crm --remote --file="$f"
           done
 
       - uses: cloudflare/wrangler-action@v3
