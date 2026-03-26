@@ -256,7 +256,84 @@ forms.post('/api/forms/:id/submit', async (c) => {
         sideEffects.push(enrollFriendInScenario(db, friendId, form.on_submit_scenario_id));
       }
 
+      // ─── milk ops: 発注依頼フォームの場合 → ops_orders作成 + 竜太郎通知 ───
+      const isOpsOrder = form.name?.includes('発注') || form.name?.includes('ops');
+      if (isOpsOrder) {
+        sideEffects.push(
+          (async () => {
+            const data = submissionData as Record<string, string>;
+            const itemName = data.item_name || data.品名 || '不明';
+            const reason = data.reason || data.理由 || '';
+            const urgency = data.urgency || data.緊急度 || '急ぎではない';
+            const orderId = crypto.randomUUID();
+
+            // Create ops_orders record
+            await db.prepare(
+              `INSERT INTO ops_orders (id, submission_id, friend_id, item_name, reason, urgency, status, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)`
+            ).bind(orderId, submission.id, friendId, itemName, reason, urgency, now, now).run();
+
+            // Get friend info for notification
+            const friend = await getFriendById(db, friendId!);
+            if (!friend?.line_user_id) return;
+
+            // Send confirmation to requester
+            const { LineClient } = await import('@line-crm/line-sdk');
+            const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
+            const { buildMessage } = await import('../services/step-delivery.js');
+
+            const urgencyEmoji = urgency === '至急' ? '🔴' : urgency === '今週中' ? '📙' : '🟢';
+            const confirmFlex = {
+              type: 'bubble', size: 'kilo',
+              header: {
+                type: 'box', layout: 'vertical',
+                contents: [
+                  { type: 'text', text: '📦 発注依頼を受け付けました', weight: 'bold', size: 'sm', color: '#1e40af' },
+                ],
+                backgroundColor: '#eff6ff', paddingAll: '16px',
+              },
+              body: {
+                type: 'box', layout: 'vertical',
+                contents: [
+                  { type: 'box', layout: 'horizontal', contents: [
+                    { type: 'text', text: '品名', size: 'xs', color: '#6b7280', flex: 2 },
+                    { type: 'text', text: itemName, size: 'sm', weight: 'bold', color: '#1f2937', flex: 5, align: 'end' },
+                  ]},
+                  { type: 'box', layout: 'horizontal', margin: 'sm', contents: [
+                    { type: 'text', text: '理由', size: 'xs', color: '#6b7280', flex: 2 },
+                    { type: 'text', text: reason || '-', size: 'sm', color: '#1f2937', flex: 5, align: 'end', wrap: true },
+                  ]},
+                  { type: 'box', layout: 'horizontal', margin: 'sm', contents: [
+                    { type: 'text', text: '緊急度', size: 'xs', color: '#6b7280', flex: 2 },
+                    { type: 'text', text: `${urgencyEmoji} ${urgency}`, size: 'sm', weight: 'bold', color: '#1f2937', flex: 5, align: 'end' },
+                  ]},
+                  { type: 'separator', margin: 'lg' },
+                  { type: 'box', layout: 'horizontal', margin: 'md', contents: [
+                    { type: 'box', layout: 'vertical', contents: [
+                      { type: 'filler' },
+                    ], width: '8px', height: '8px', cornerRadius: '4px', backgroundColor: '#F59E0B' },
+                    { type: 'text', text: '承認待ち', size: 'xs', weight: 'bold', color: '#92400E', margin: 'sm' },
+                  ]},
+                ],
+                paddingAll: '16px',
+              },
+            };
+            await lineClient.pushMessage(friend.line_user_id, [buildMessage('flex', JSON.stringify(confirmFlex))]);
+
+            // Notify Ryutaro with approve/reject buttons
+            const { buildOrderNotifyFlex } = await import('../services/ops.js');
+            const notifyFlex = buildOrderNotifyFlex(
+              friend.display_name, itemName, reason, urgency, submission.id, friendId!
+            );
+            const RYUTARO = 'U2fd039fc2f1cbb39c27843392b8c7542';
+            await lineClient.pushMessage(RYUTARO, [buildMessage('flex', JSON.stringify(notifyFlex))]);
+          })(),
+        );
+      }
+
       // Send confirmation message with submitted data back to user
+      // (Skip for ops order forms — they have a custom confirmation above)
+      if (!isOpsOrder) {
       sideEffects.push(
         (async () => {
           console.log('Form reply: starting for friendId', friendId);
@@ -310,6 +387,7 @@ forms.post('/api/forms/:id/submit', async (c) => {
           await lineClient.pushMessage(friend.line_user_id, [buildMessage('flex', JSON.stringify(flex))]);
         })(),
       );
+      } // end if (!isOpsOrder)
 
       if (sideEffects.length > 0) {
         const results = await Promise.allSettled(sideEffects);
