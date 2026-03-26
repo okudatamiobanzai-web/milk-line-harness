@@ -689,7 +689,6 @@ export default function ScenarioDetailClient({ scenarioId }: { scenarioId: strin
                       {sendResult.message}
                     </div>
                   )}
-                  </div>
                 </div>
               ))}
           </div>
