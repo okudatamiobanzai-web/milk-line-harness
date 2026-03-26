@@ -779,34 +779,110 @@ export default function RichMenusPage() {
                       </div>
                     </div>
 
-                    {/* Detail expand */}
+                    {/* Detail expand — Visual Area Preview */}
                     {detailMenu?.richMenuId === menu.richMenuId && (
                       <div className="mt-4 pt-4 border-t border-gray-200 space-y-3" onClick={(e) => e.stopPropagation()}>
-                        <div className="max-w-2xl">
-                          <img
-                            src={api.richMenus.getImageUrl(menu.richMenuId)}
-                            alt={menu.name}
-                            className="w-full rounded-lg border border-gray-200"
-                            onError={(e) => { (e.target as HTMLImageElement).src = '' }}
-                          />
+                        {/* Visual overlay preview */}
+                        <div className="max-w-3xl">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h4 className="text-xs font-bold text-gray-700">エリアプレビュー</h4>
+                            <span className="text-xs text-gray-400">ホバーで詳細表示</span>
+                          </div>
+                          <div
+                            className="relative w-full rounded-lg border border-gray-200 overflow-hidden"
+                            style={{ paddingBottom: `${(menu.size.height / menu.size.width) * 100}%` }}
+                          >
+                            <img
+                              src={api.richMenus.getImageUrl(menu.richMenuId)}
+                              alt={menu.name}
+                              className="absolute inset-0 w-full h-full object-cover"
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                            />
+                            {/* Area overlays */}
+                            {menu.areas.map((area, i) => {
+                              const colors = [
+                                'rgba(59,130,246,0.15)', 'rgba(16,185,129,0.15)', 'rgba(245,158,11,0.15)',
+                                'rgba(239,68,68,0.15)', 'rgba(139,92,246,0.15)', 'rgba(236,72,153,0.15)',
+                                'rgba(20,184,166,0.15)', 'rgba(249,115,22,0.15)',
+                              ]
+                              const borderColors = [
+                                'rgba(59,130,246,0.7)', 'rgba(16,185,129,0.7)', 'rgba(245,158,11,0.7)',
+                                'rgba(239,68,68,0.7)', 'rgba(139,92,246,0.7)', 'rgba(236,72,153,0.7)',
+                                'rgba(20,184,166,0.7)', 'rgba(249,115,22,0.7)',
+                              ]
+                              const bgColor = colors[i % colors.length]
+                              const bColor = borderColors[i % borderColors.length]
+
+                              const actionLabel = area.action.type === 'uri'
+                                ? area.action.uri || ''
+                                : area.action.type === 'richmenuswitch'
+                                  ? `切替 → ${area.action.richMenuAliasId}`
+                                  : area.action.type === 'message'
+                                    ? `送信: ${area.action.text}`
+                                    : area.action.type === 'postback'
+                                      ? `PB: ${area.action.data}`
+                                      : area.action.type
+
+                              return (
+                                <div
+                                  key={i}
+                                  className="absolute flex flex-col items-center justify-center transition-all duration-150 cursor-default group"
+                                  style={{
+                                    left: `${(area.bounds.x / menu.size.width) * 100}%`,
+                                    top: `${(area.bounds.y / menu.size.height) * 100}%`,
+                                    width: `${(area.bounds.width / menu.size.width) * 100}%`,
+                                    height: `${(area.bounds.height / menu.size.height) * 100}%`,
+                                    background: bgColor,
+                                    border: `2px solid ${bColor}`,
+                                  }}
+                                >
+                                  {/* Always visible: number badge + label */}
+                                  <span
+                                    className="px-1.5 py-0.5 rounded text-white text-xs font-bold leading-none"
+                                    style={{ backgroundColor: bColor, fontSize: '10px' }}
+                                  >
+                                    #{i + 1} {area.action.label || ''}
+                                  </span>
+
+                                  {/* Hover tooltip: full action detail */}
+                                  <div className="hidden group-hover:flex flex-col items-center mt-1 max-w-full">
+                                    <span
+                                      className="px-2 py-1 rounded text-white text-center leading-tight break-all"
+                                      style={{ backgroundColor: 'rgba(0,0,0,0.75)', fontSize: '9px', maxWidth: '95%' }}
+                                    >
+                                      {ACTION_TYPE_LABELS[area.action.type]}<br />
+                                      {actionLabel}
+                                    </span>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
                         </div>
-                        <div className="grid gap-2">
-                          <h4 className="text-xs font-bold text-gray-700">エリア一覧</h4>
-                          {menu.areas.map((area, i) => (
-                            <div key={i} className="bg-gray-50 rounded-lg px-3 py-2 text-xs">
-                              <span className="font-medium text-gray-900">#{i + 1} {area.action.label || ''}</span>
-                              <span className="text-gray-500 ml-2">
-                                {ACTION_TYPE_LABELS[area.action.type]}
-                                {area.action.type === 'uri' && ` → ${area.action.uri}`}
-                                {area.action.type === 'richmenuswitch' && ` → ${area.action.richMenuAliasId}`}
-                                {area.action.type === 'postback' && ` → ${area.action.data}`}
-                                {area.action.type === 'message' && ` → ${area.action.text}`}
-                              </span>
-                              <span className="text-gray-400 ml-2">
-                                ({area.bounds.x},{area.bounds.y}) {area.bounds.width}×{area.bounds.height}
-                              </span>
-                            </div>
-                          ))}
+
+                        {/* Area list (compact) */}
+                        <div className="grid gap-1.5 max-w-3xl">
+                          {menu.areas.map((area, i) => {
+                            const dotColors = [
+                              'bg-blue-500', 'bg-emerald-500', 'bg-amber-500',
+                              'bg-red-500', 'bg-violet-500', 'bg-pink-500',
+                              'bg-teal-500', 'bg-orange-500',
+                            ]
+                            return (
+                              <div key={i} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-1.5 text-xs">
+                                <span className={`w-2 h-2 rounded-full shrink-0 ${dotColors[i % dotColors.length]}`} />
+                                <span className="font-bold text-gray-800 shrink-0">#{i + 1}</span>
+                                <span className="font-medium text-gray-700 shrink-0">{area.action.label || '—'}</span>
+                                <span className="text-gray-400 shrink-0">{ACTION_TYPE_LABELS[area.action.type]}</span>
+                                <span className="text-gray-500 truncate">
+                                  {area.action.type === 'uri' && `→ ${area.action.uri}`}
+                                  {area.action.type === 'richmenuswitch' && `→ ${area.action.richMenuAliasId}`}
+                                  {area.action.type === 'message' && `→ 「${area.action.text}」`}
+                                  {area.action.type === 'postback' && `→ ${area.action.data}`}
+                                </span>
+                              </div>
+                            )
+                          })}
                         </div>
                       </div>
                     )}
