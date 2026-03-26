@@ -1103,11 +1103,7 @@ export default function RichMenusPage() {
         )}
 
         {/* CC Prompts */}
-        <div className="flex gap-2 flex-wrap">
-          {ccPrompts.map((p) => (
-            <CcPromptButton key={p.title} title={p.title} prompt={p.prompt} />
-          ))}
-        </div>
+        <CcPromptButton prompts={ccPrompts} />
       </main>
     </div>
   )
