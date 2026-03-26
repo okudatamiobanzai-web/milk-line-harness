@@ -1,15 +1,123 @@
 /**
  * milk ops API routes
+ * - POST /api/ops/report — submit task/order from LIFF (public, no auth)
  * - GET /api/ops/reports — list task reports (for dashboard)
  * - GET /api/ops/orders — list orders with status (for dashboard)
  * - GET /api/ops/summary — aggregated stats
  */
 
 import { Hono } from 'hono';
-import { jstNow } from '@line-crm/db';
+import { jstNow, getFriendByLineUserId } from '@line-crm/db';
+import { LineClient } from '@line-crm/line-sdk';
+import { buildMessage } from '../services/step-delivery.js';
+import {
+  RYUTARO_LINE_ID,
+  OPS_CATEGORIES,
+  getSubLabels,
+  buildCompleteFlex,
+  buildTaskNotifyFlex,
+  buildOrderNotifyFlex,
+  URGENCY_OPTIONS,
+} from '../services/ops.js';
 import type { Env } from '../index.js';
 
 const ops = new Hono<Env>();
+
+// POST /api/ops/report — LIFF submission (public endpoint)
+ops.post('/api/ops/report', async (c) => {
+  try {
+    const db = c.env.DB;
+    const body = await c.req.json<{
+      lineUserId: string;
+      type: 'task' | 'order';
+      category?: string;
+      subItems?: string[];
+      items?: string[];
+      urgency?: string;
+    }>();
+
+    if (!body.lineUserId) {
+      return c.json({ success: false, error: 'lineUserId required' }, 400);
+    }
+
+    const friend = await getFriendByLineUserId(db, body.lineUserId);
+    if (!friend) {
+      return c.json({ success: false, error: 'Friend not found' }, 404);
+    }
+
+    const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
+    const now = jstNow();
+
+    if (body.type === 'task') {
+      const catKey = body.category || '';
+      const subItems = body.subItems || [];
+      if (!catKey || subItems.length === 0) {
+        return c.json({ success: false, error: 'category and subItems required' }, 400);
+      }
+
+      // Save report
+      await db.prepare(
+        'INSERT INTO ops_reports (id, friend_id, category, sub_items, created_at) VALUES (?, ?, ?, ?, ?)'
+      ).bind(crypto.randomUUID(), friend.id, catKey, JSON.stringify(subItems), now).run();
+
+      // Send completion Flex to user
+      const completeFlex = buildCompleteFlex(friend.display_name, catKey, subItems);
+      await lineClient.pushMessage(friend.line_user_id, [
+        buildMessage('flex', JSON.stringify(completeFlex)),
+      ]);
+
+      // Notify Ryutaro
+      const notifyFlex = buildTaskNotifyFlex(friend.display_name, catKey, subItems);
+      await lineClient.pushMessage(RYUTARO_LINE_ID, [
+        buildMessage('flex', JSON.stringify(notifyFlex)),
+      ]);
+
+      return c.json({ success: true });
+    }
+
+    if (body.type === 'order') {
+      const items = body.items || [];
+      const urgency = body.urgency || 'low';
+      if (items.length === 0) {
+        return c.json({ success: false, error: 'items required' }, 400);
+      }
+
+      // Save each order
+      const orderIds: string[] = [];
+      for (const item of items) {
+        const oid = crypto.randomUUID();
+        orderIds.push(oid);
+        await db.prepare(
+          'INSERT INTO ops_orders (id, friend_id, item_name, urgency, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        ).bind(oid, friend.id, item, urgency, 'pending', now, now).run();
+      }
+
+      // Notify Ryutaro for each item
+      for (let i = 0; i < items.length; i++) {
+        const notifyFlex = buildOrderNotifyFlex(
+          friend.display_name, items[i], urgency, orderIds[i], friend.id,
+        );
+        await lineClient.pushMessage(RYUTARO_LINE_ID, [
+          buildMessage('flex', JSON.stringify(notifyFlex)),
+        ]);
+      }
+
+      // Confirm to user
+      const urg = URGENCY_OPTIONS.find(u => u.key === urgency);
+      const confirmText = `📦 ${items.join('、')} の発注依頼を送りました！\n緊急度: ${urg ? `${urg.emoji} ${urg.label}` : urgency}\n⏳ 承認待ち`;
+      await lineClient.pushMessage(friend.line_user_id, [
+        { type: 'text', text: confirmText },
+      ]);
+
+      return c.json({ success: true });
+    }
+
+    return c.json({ success: false, error: 'Invalid type' }, 400);
+  } catch (err) {
+    console.error('POST /api/ops/report error:', err);
+    return c.json({ success: false, error: 'Internal server error' }, 500);
+  }
+});
 
 // GET /api/ops/reports — list task reports
 ops.get('/api/ops/reports', async (c) => {

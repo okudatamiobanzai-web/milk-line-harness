@@ -21,22 +21,8 @@ import { buildMessage, expandVariables } from '../services/step-delivery.js';
 import {
   RYUTARO_LINE_ID,
   OPS_CATEGORIES,
-  OPS_SUB_ITEMS,
-  getSubLabels,
-  buildCategoryFlex,
-  buildSubItemFlex,
-  buildAddMoreQuickReply,
-  buildItemRecordedText,
-  buildCompleteFlex,
-  buildTaskNotifyFlex,
-  buildOrderItemFlex,
-  buildUrgencyQuickReply,
-  buildOrderConfirmFlex,
-  buildOrderNotifyFlex,
   buildCommentQuickReply,
   buildOrderResultFlex,
-  getOrderItemLabel,
-  ORDER_ITEMS,
 } from '../services/ops.js';
 import type { Env } from '../index.js';
 
@@ -232,176 +218,45 @@ async function handleEvent(
     const params = new URLSearchParams(event.postback.data);
     const action = params.get('action');
 
-    // ─── milk ops: Category selected → show sub-items ───
+    // ─── milk ops: Category selected → open LIFF checklist ───
     if (action === 'ops') {
       const catKey = params.get('cat');
       if (!catKey || !OPS_CATEGORIES[catKey]) return;
 
-      const flex = buildSubItemFlex(catKey);
+      const cat = OPS_CATEGORIES[catKey];
+      const liffUrl = 'https://liff.line.me/2009554425-4IMBmLQ9'
+        + `?page=ops&mode=task&cat=${catKey}`;
+
+      const flex = {
+        type: 'bubble', size: 'kilo',
+        body: {
+          type: 'box', layout: 'vertical',
+          contents: [
+            { type: 'text', text: `${cat.emoji} ${cat.label}`, weight: 'bold', size: 'lg', color: '#1a1a1a' },
+            { type: 'text', text: 'やったところを選んでね 👆', color: '#888888', size: 'sm', margin: 'sm' },
+          ],
+          paddingAll: '16px',
+        },
+        footer: {
+          type: 'box', layout: 'vertical',
+          contents: [{
+            type: 'button', style: 'primary', color: '#06C755', height: 'md',
+            action: { type: 'uri', label: '報告画面を開く', uri: liffUrl },
+          }],
+          paddingAll: '12px',
+        },
+      };
+
       try {
         await lineClient.replyMessage(event.replyToken, [
           buildMessage('flex', JSON.stringify(flex)),
         ]);
-        // Log outgoing
-        await db.prepare(
-          `INSERT INTO messages_log (id, friend_id, direction, message_type, content, created_at)
-           VALUES (?, ?, 'outgoing', 'flex', ?, ?)`
-        ).bind(crypto.randomUUID(), friend.id, JSON.stringify(flex), jstNow()).run();
       } catch (e) {
         console.error('ops category reply error:', e);
       }
       return;
     }
 
-    // ─── milk ops: Sub-item selected → record + "add more?" quick reply ───
-    if (action === 'ops-item') {
-      const catKey = params.get('cat') || '';
-      const sub = params.get('sub') || '';
-      const prevSel = params.get('sel'); // previously selected items
-      const allSelected = prevSel ? [...prevSel.split(','), sub] : [sub];
-
-      const text = buildItemRecordedText(catKey, allSelected);
-      const qr = buildAddMoreQuickReply(catKey, allSelected);
-
-      try {
-        await lineClient.replyMessage(event.replyToken, [{
-          type: 'text',
-          text,
-          quickReply: qr,
-        } as Record<string, unknown>]);
-        await db.prepare(
-          `INSERT INTO messages_log (id, friend_id, direction, message_type, content, created_at)
-           VALUES (?, ?, 'outgoing', 'text', ?, ?)`
-        ).bind(crypto.randomUUID(), friend.id, text, jstNow()).run();
-      } catch (e) {
-        console.error('ops item reply error:', e);
-      }
-      return;
-    }
-
-    // ─── milk ops: "もう1件追加" → show sub-items again (excluding selected) ───
-    if (action === 'ops-more') {
-      const catKey = params.get('cat') || '';
-      const sel = params.get('sel')?.split(',') || [];
-
-      const flex = buildSubItemFlex(catKey, sel);
-      try {
-        await lineClient.replyMessage(event.replyToken, [
-          buildMessage('flex', JSON.stringify(flex)),
-        ]);
-      } catch (e) {
-        console.error('ops more reply error:', e);
-      }
-      return;
-    }
-
-    // ─── milk ops: "これで完了" → save report + completion Flex + notify Ryutaro ───
-    if (action === 'ops-done') {
-      const catKey = params.get('cat') || '';
-      const sel = params.get('sel')?.split(',').filter(Boolean) || [];
-
-      if (sel.length === 0 || !OPS_CATEGORIES[catKey]) return;
-
-      // 1. Save to ops_reports
-      try {
-        await db.prepare(
-          `INSERT INTO ops_reports (id, friend_id, category, sub_items, created_at)
-           VALUES (?, ?, ?, ?, ?)`
-        ).bind(crypto.randomUUID(), friend.id, catKey, JSON.stringify(sel), jstNow()).run();
-      } catch (e) {
-        console.error('ops report save error:', e);
-      }
-
-      // 2. Reply with completion Flex
-      const completeFlex = buildCompleteFlex(friend.display_name, catKey, sel);
-      try {
-        await lineClient.replyMessage(event.replyToken, [
-          buildMessage('flex', JSON.stringify(completeFlex)),
-        ]);
-        await db.prepare(
-          `INSERT INTO messages_log (id, friend_id, direction, message_type, content, created_at)
-           VALUES (?, ?, 'outgoing', 'flex', ?, ?)`
-        ).bind(crypto.randomUUID(), friend.id, JSON.stringify(completeFlex), jstNow()).run();
-      } catch (e) {
-        console.error('ops done reply error:', e);
-      }
-
-      // 3. Push notification to Ryutaro
-      const notifyFlex = buildTaskNotifyFlex(friend.display_name, catKey, sel);
-      try {
-        await lineClient.pushMessage(RYUTARO_LINE_ID, [
-          buildMessage('flex', JSON.stringify(notifyFlex)),
-        ]);
-      } catch (e) {
-        console.error('ops notify push error:', e);
-      }
-      return;
-    }
-
-    // ─── milk ops order: Item selected → ask urgency via Quick Reply ───
-    if (action === 'ord-item') {
-      const itemKey = params.get('item') || '';
-
-      // "その他" → テキスト入力待ち状態をmetadataに保存
-      if (itemKey === 'other') {
-        try {
-          const existing = await db.prepare('SELECT metadata FROM friends WHERE id = ?').bind(friend.id).first<{ metadata: string }>();
-          const meta = JSON.parse(existing?.metadata || '{}');
-          meta.ops_order_pending_item = true;
-          await db.prepare('UPDATE friends SET metadata = ?, updated_at = ? WHERE id = ?')
-            .bind(JSON.stringify(meta), jstNow(), friend.id).run();
-        } catch (e) { console.error('ord-item other error:', e); }
-
-        try {
-          await lineClient.replyMessage(event.replyToken, [
-            { type: 'text', text: '📝 発注したい品名を入力してください' },
-          ]);
-        } catch (e) { console.error('ord-item reply error:', e); }
-        return;
-      }
-
-      const itemLabel = getOrderItemLabel(itemKey);
-      try {
-        await lineClient.replyMessage(event.replyToken, [{
-          type: 'text',
-          text: `📦 ${itemLabel} ですね！\n緊急度を選んでください`,
-          quickReply: buildUrgencyQuickReply(itemKey, itemLabel),
-        } as Record<string, unknown>]);
-      } catch (e) { console.error('ord-item reply error:', e); }
-      return;
-    }
-
-    // ─── milk ops order: Urgency selected → save order + notify Ryutaro ───
-    if (action === 'ord-urgency') {
-      const itemLabel = decodeURIComponent(params.get('item') || '');
-      const urgencyKey = params.get('urg') || 'low';
-      const orderId = crypto.randomUUID();
-
-      // 1. Save to ops_orders
-      try {
-        await db.prepare(
-          `INSERT INTO ops_orders (id, friend_id, item_name, urgency, status, created_at, updated_at)
-           VALUES (?, ?, ?, ?, 'pending', ?, ?)`
-        ).bind(orderId, friend.id, itemLabel, urgencyKey, jstNow(), jstNow()).run();
-      } catch (e) { console.error('ord save error:', e); }
-
-      // 2. Reply with confirmation
-      const confirmFlex = buildOrderConfirmFlex(itemLabel, urgencyKey);
-      try {
-        await lineClient.replyMessage(event.replyToken, [
-          buildMessage('flex', JSON.stringify(confirmFlex)),
-        ]);
-      } catch (e) { console.error('ord confirm reply error:', e); }
-
-      // 3. Push to Ryutaro
-      const notifyFlex = buildOrderNotifyFlex(friend.display_name, itemLabel, urgencyKey, orderId, friend.id);
-      try {
-        await lineClient.pushMessage(RYUTARO_LINE_ID, [
-          buildMessage('flex', JSON.stringify(notifyFlex)),
-        ]);
-      } catch (e) { console.error('ord notify push error:', e); }
-      return;
-    }
 
     // ─── milk ops: Approve/reject order → set pending comment state ───
     if (action === 'ops-approve' || action === 'ops-reject') {
@@ -519,23 +374,6 @@ async function handleEvent(
     try {
       const metaRow = await db.prepare('SELECT metadata FROM friends WHERE id = ?').bind(friend.id).first<{ metadata: string }>();
       const meta = JSON.parse(metaRow?.metadata || '{}');
-
-      // 「その他」の品名テキスト入力待ち
-      if (meta.ops_order_pending_item) {
-        delete meta.ops_order_pending_item;
-        await db.prepare('UPDATE friends SET metadata = ?, updated_at = ? WHERE id = ?')
-          .bind(JSON.stringify(meta), jstNow(), friend.id).run();
-
-        // 品名を受け取ったら緊急度を聞く
-        try {
-          await lineClient.replyMessage(event.replyToken, [{
-            type: 'text',
-            text: `📦 ${incomingText} ですね！\n緊急度を選んでください`,
-            quickReply: buildUrgencyQuickReply('other', incomingText),
-          } as Record<string, unknown>]);
-        } catch (e) { console.error('ord text reply error:', e); }
-        return;
-      }
 
       // Ryutaro の承認/却下コメント処理
       if (meta.ops_pending_approval) {

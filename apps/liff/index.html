@@ -410,6 +410,71 @@
     .close-btn:active {
       background: #e8faf0;
     }
+
+    /* ── milk ops ── */
+    .ops-page { padding: 20px 16px; max-width: 480px; margin: 0 auto; }
+    .ops-header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #f8fafc; border-radius: 12px; margin-bottom: 16px; }
+    .ops-emoji { font-size: 28px; }
+    .ops-title { font-size: 17px; font-weight: 700; color: #1a1a1a; }
+    .ops-sub { font-size: 13px; color: #888; }
+    .ops-list { display: flex; flex-direction: column; gap: 2px; margin-bottom: 16px; }
+    .ops-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px; background: #fff; border: 1px solid #f0f0f0; border-radius: 10px;
+      cursor: pointer; transition: all 0.15s; user-select: none;
+    }
+    .ops-item:active { transform: scale(0.98); }
+    .ops-item.checked { background: #f0fdf4; border-color: #bbf7d0; }
+    .ops-checkbox {
+      width: 22px; height: 22px; border-radius: 5px; border: 2px solid #d1d5db;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      transition: all 0.15s;
+    }
+    .ops-checkbox svg { width: 14px; height: 14px; }
+    .ops-item span { font-size: 15px; color: #1f2937; }
+    .ops-item.checked span { font-weight: 600; }
+    .ops-submit {
+      width: 100%; padding: 16px; border: none; border-radius: 12px;
+      font-size: 16px; font-weight: 700; text-align: center;
+      background: #e5e7eb; color: #9ca3af; cursor: default;
+      transition: all 0.2s;
+    }
+    .ops-submit.active { background: #06C755; color: #fff; cursor: pointer; }
+    .ops-submit.active:active { opacity: 0.85; }
+    .ops-categories { display: flex; flex-direction: column; gap: 8px; }
+    .ops-cat-btn {
+      display: flex; align-items: center; gap: 12px;
+      padding: 16px; background: #fff; border: 1px solid #f0f0f0; border-radius: 10px;
+      font-size: 15px; color: #1f2937; cursor: pointer; transition: all 0.15s;
+    }
+    .ops-cat-btn:active { transform: scale(0.98); background: #f8fafc; }
+    .ops-cat-btn span:first-child { font-size: 22px; }
+    .ops-custom { padding: 4px 0; }
+    .ops-custom input {
+      width: 100%; padding: 14px 16px; border: 1px solid #e5e7eb; border-radius: 10px;
+      font-size: 15px; color: #1f2937; outline: none; box-sizing: border-box;
+    }
+    .ops-custom input:focus { border-color: #3B82F6; }
+    .ops-urgency { margin-bottom: 16px; }
+    .ops-urgency-btns { display: flex; gap: 8px; }
+    .urg-btn {
+      flex: 1; padding: 10px 8px; border: 1.5px solid #e5e7eb; border-radius: 8px;
+      background: #fff; font-size: 12px; font-weight: 500; color: #6b7280;
+      cursor: pointer; text-align: center; transition: all 0.15s;
+    }
+    .urg-btn.active { border-color: #3B82F6; background: #eff6ff; color: #1e40af; font-weight: 700; }
+    .ops-loading { text-align: center; padding: 60px 20px; color: #888; font-size: 15px; }
+    .spinner {
+      width: 32px; height: 32px; border: 3px solid #e5e7eb; border-top-color: #06C755;
+      border-radius: 50%; animation: spin 0.6s linear infinite; margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .ops-done { text-align: center; padding: 48px 20px; }
+    .ops-done-icon { font-size: 48px; margin-bottom: 16px; }
+    .ops-done-title { font-size: 18px; font-weight: 700; color: #065f46; margin-bottom: 12px; }
+    .ops-done-tags { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 12px; }
+    .ops-tag { padding: 4px 12px; background: #d1fae5; color: #065f46; border-radius: 20px; font-size: 13px; font-weight: 600; }
+    .ops-done-sub { font-size: 13px; color: #9ca3af; }
   </style>
 </head>
 <body>
