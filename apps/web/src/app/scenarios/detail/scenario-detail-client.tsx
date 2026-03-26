@@ -123,6 +123,11 @@ export default function ScenarioDetailClient({ scenarioId }: { scenarioId: strin
   const [stepForm, setStepForm] = useState<StepFormState>(emptyStepForm)
   const [stepSaving, setStepSaving] = useState(false)
   const [stepError, setStepError] = useState('')
+  const [sendingStepId, setSendingStepId] = useState<string | null>(null)
+  const [sendResult, setSendResult] = useState<{ stepId: string; ok: boolean; message: string } | null>(null)
+
+  // 竜太郎さんのfriend ID（テスト送信先）
+  const TEST_FRIEND_ID = '85f12d27-5264-45f9-b704-4f3cb1399d19'
 
   const loadScenario = useCallback(async () => {
     setLoading(true)
@@ -242,6 +247,28 @@ export default function ScenarioDetailClient({ scenarioId }: { scenarioId: strin
       loadScenario()
     } catch {
       setError('ステップの削除に失敗しました')
+    }
+  }
+
+  const handleTestSend = async (step: ScenarioStep) => {
+    setSendingStepId(step.id)
+    setSendResult(null)
+    try {
+      const res = await api.friends.sendMessage(TEST_FRIEND_ID, {
+        messageType: step.messageType,
+        content: step.messageContent,
+      })
+      if (res.success) {
+        setSendResult({ stepId: step.id, ok: true, message: '送信しました！LINEを確認してください' })
+      } else {
+        setSendResult({ stepId: step.id, ok: false, message: res.error || '送信に失敗しました' })
+      }
+    } catch {
+      setSendResult({ stepId: step.id, ok: false, message: '送信に失敗しました' })
+    } finally {
+      setSendingStepId(null)
+      // 3秒後にメッセージをクリア
+      setTimeout(() => setSendResult(null), 3000)
     }
   }
 
@@ -397,13 +424,29 @@ export default function ScenarioDetailClient({ scenarioId }: { scenarioId: strin
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-gray-800">ステップ一覧</h3>
-          <button
-            onClick={openAddStep}
-            className="px-3 py-1.5 min-h-[44px] text-sm font-medium text-white rounded-lg transition-opacity hover:opacity-90"
-            style={{ backgroundColor: '#06C755' }}
-          >
-            + ステップ追加
-          </button>
+          <div className="flex items-center gap-2">
+            {scenario.steps.length > 0 && (
+              <button
+                onClick={async () => {
+                  if (!confirm(`全${scenario.steps.length}ステップを自分のLINEに送信します。よいですか？`)) return
+                  for (const step of [...scenario.steps].sort((a, b) => a.stepOrder - b.stepOrder)) {
+                    await handleTestSend(step)
+                    await new Promise(r => setTimeout(r, 1000))
+                  }
+                }}
+                className="px-3 py-1.5 min-h-[44px] text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors inline-flex items-center"
+              >
+                📤 全ステップ送信
+              </button>
+            )}
+            <button
+              onClick={openAddStep}
+              className="px-3 py-1.5 min-h-[44px] text-sm font-medium text-white rounded-lg transition-opacity hover:opacity-90"
+              style={{ backgroundColor: '#06C755' }}
+            >
+              + ステップ追加
+            </button>
+          </div>
         </div>
 
         {/* Step form */}
@@ -527,6 +570,14 @@ export default function ScenarioDetailClient({ scenarioId }: { scenarioId: strin
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       <button
+                        onClick={() => handleTestSend(step)}
+                        disabled={sendingStepId === step.id}
+                        className="text-xs text-blue-600 hover:text-blue-700 px-2 py-1 rounded hover:bg-blue-50 transition-colors min-h-[44px] flex items-center disabled:opacity-50"
+                        title="自分にテスト送信"
+                      >
+                        {sendingStepId === step.id ? '送信中...' : '📤 テスト送信'}
+                      </button>
+                      <button
                         onClick={() => openEditStep(step)}
                         className="text-xs text-green-600 hover:text-green-700 px-2 py-1 rounded hover:bg-green-50 transition-colors min-h-[44px] flex items-center"
                       >
@@ -539,6 +590,12 @@ export default function ScenarioDetailClient({ scenarioId }: { scenarioId: strin
                         削除
                       </button>
                     </div>
+                  </div>
+                  {sendResult && sendResult.stepId === step.id && (
+                    <div className={`mt-2 text-xs px-3 py-1.5 rounded-md ${sendResult.ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                      {sendResult.message}
+                    </div>
+                  )}
                   </div>
                 </div>
               ))}
