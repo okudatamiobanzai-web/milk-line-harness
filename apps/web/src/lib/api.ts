@@ -512,8 +512,19 @@ export const api = {
       return res.json()
     },
     getImageUrl: (id: string) => {
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787'
-      return `${API_BASE}/api/rich-menus/${id}/image`
+      return `${API_URL}/api/rich-menus/${id}/image`
+    },
+    fetchImageBlob: async (id: string): Promise<string | null> => {
+      try {
+        const res = await fetch(`${API_URL}/api/rich-menus/${id}/image`, {
+          headers: { 'Authorization': `Bearer ${getApiKey()}` },
+        })
+        if (!res.ok) return null
+        const blob = await res.blob()
+        return URL.createObjectURL(blob)
+      } catch {
+        return null
+      }
     },
     linkToFriend: (friendId: string, richMenuId: string) =>
       fetchApi<ApiResponse<null>>(`/api/friends/${friendId}/rich-menu`, {

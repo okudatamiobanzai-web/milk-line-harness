@@ -9,34 +9,45 @@ import CcPromptButton from '@/components/cc-prompt-button'
 
 // ─── Authenticated Image (fetches with Bearer token) ──────────────────────────
 
-function useAuthImage(url: string | null) {
+function useAuthImage(menuId: string | null) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null)
+  const [error, setError] = useState(false)
   useEffect(() => {
-    if (!url) return
+    if (!menuId) return
     let cancelled = false
     let objectUrl: string | null = null
-    const apiKey = typeof window !== 'undefined' ? localStorage.getItem('lh_api_key') || '' : ''
-    fetch(url, { headers: { 'Authorization': `Bearer ${apiKey}` } })
-      .then((r) => (r.ok ? r.blob() : null))
-      .then((blob) => {
-        if (blob && !cancelled) {
-          objectUrl = URL.createObjectURL(blob)
-          setBlobUrl(objectUrl)
-        }
-      })
-      .catch(() => {})
+    setBlobUrl(null)
+    setError(false)
+    api.richMenus.fetchImageBlob(menuId).then((url) => {
+      if (cancelled) return
+      if (url) {
+        objectUrl = url
+        setBlobUrl(url)
+      } else {
+        setError(true)
+      }
+    })
     return () => {
       cancelled = true
       if (objectUrl) URL.revokeObjectURL(objectUrl)
     }
-  }, [url])
-  return blobUrl
+  }, [menuId])
+  return { blobUrl, error }
 }
 
 function AuthImage({ menuId, alt, className, style }: { menuId: string; alt: string; className?: string; style?: React.CSSProperties }) {
-  const src = useAuthImage(api.richMenus.getImageUrl(menuId))
-  if (!src) return <div className={className} style={{ ...style, background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span className="text-gray-400 text-xs">読込中...</span></div>
-  return <img src={src} alt={alt} className={className} style={style} />
+  const { blobUrl, error } = useAuthImage(menuId)
+  if (error) return (
+    <div className={className} style={{ ...style, background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <span className="text-red-400 text-xs">画像取得エラー</span>
+    </div>
+  )
+  if (!blobUrl) return (
+    <div className={className} style={{ ...style, background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <span className="text-gray-400 text-xs">画像を読込中...</span>
+    </div>
+  )
+  return <img src={blobUrl} alt={alt} className={className} style={style} />
 }
 
 interface RichMenuBounds {
