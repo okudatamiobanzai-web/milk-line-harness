@@ -14,16 +14,12 @@ CREATE INDEX IF NOT EXISTS idx_ops_reports_friend ON ops_reports (friend_id);
 CREATE INDEX IF NOT EXISTS idx_ops_reports_created ON ops_reports (created_at);
 CREATE INDEX IF NOT EXISTS idx_ops_reports_category ON ops_reports (category);
 
--- Order status tracking (extends form_submissions)
--- Instead of adding columns to form_submissions, we use a separate table
--- that references submission IDs for the approval workflow.
+-- Order tracking — created from LINE postback flow, not forms
 CREATE TABLE IF NOT EXISTS ops_orders (
   id              TEXT PRIMARY KEY,
-  submission_id   TEXT NOT NULL,
   friend_id       TEXT REFERENCES friends(id) ON DELETE SET NULL,
   item_name       TEXT NOT NULL,
-  reason          TEXT,
-  urgency         TEXT DEFAULT 'normal',
+  urgency         TEXT DEFAULT 'low',
   status          TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected','ordered','delivered')),
   approved_by     TEXT,
   comment         TEXT,

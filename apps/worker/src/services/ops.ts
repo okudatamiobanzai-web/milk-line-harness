@@ -275,17 +275,131 @@ export function buildTaskNotifyFlex(displayName: string | null, catKey: string, 
   };
 }
 
-/** Flex notification sent to Ryutaro for order requests */
+// ── Order Flow Constants ─────────────────────────────────────────────────
+
+export const ORDER_ITEMS = [
+  { key: 'paper',  label: 'コピー用紙' },
+  { key: 'tp',     label: 'トイレットペーパー' },
+  { key: 'soap',   label: 'ソープ・洗剤' },
+  { key: 'drink',  label: 'コーヒー・お茶' },
+  { key: 'bag',    label: 'ゴミ袋' },
+  { key: 'tissue', label: 'ティッシュ' },
+  { key: 'towel',  label: 'ペーパータオル' },
+  { key: 'other',  label: 'その他（品名を入力）' },
+];
+
+export const URGENCY_OPTIONS = [
+  { key: 'low',    label: '急ぎではない', emoji: '🟢' },
+  { key: 'mid',    label: '今週中',       emoji: '📙' },
+  { key: 'high',   label: '至急',         emoji: '🔴' },
+];
+
+export function getOrderItemLabel(key: string): string {
+  return ORDER_ITEMS.find(i => i.key === key)?.label || key;
+}
+
+export function getUrgencyLabel(key: string): string {
+  const u = URGENCY_OPTIONS.find(i => i.key === key);
+  return u ? `${u.emoji} ${u.label}` : key;
+}
+
+// ── Order Flow Flex Builders ─────────────────────────────────────────────
+
+/** Step 0: Item selection card — triggered by "発注したい" auto-reply */
+export function buildOrderItemFlex(): object {
+  const buttons = ORDER_ITEMS.map(item => ({
+    type: 'button',
+    action: {
+      type: 'postback',
+      label: item.label,
+      data: `action=ord-item&item=${item.key}`,
+      displayText: item.key === 'other' ? 'その他の品目を発注' : item.label,
+    },
+    style: 'secondary' as const,
+    height: 'sm' as const,
+  }));
+
+  return {
+    type: 'bubble',
+    size: 'kilo',
+    body: {
+      type: 'box', layout: 'vertical',
+      contents: [
+        { type: 'text', text: '📦 発注依頼', weight: 'bold', size: 'lg', color: '#1a1a1a' },
+        { type: 'text', text: '何が必要ですか？', color: '#888888', size: 'sm', margin: 'sm' },
+      ],
+      paddingAll: '16px',
+    },
+    footer: {
+      type: 'box', layout: 'vertical', spacing: 'xs',
+      contents: buttons,
+      paddingAll: '12px',
+    },
+  };
+}
+
+/** Step 1: Urgency Quick Reply — shown after item selected */
+export function buildUrgencyQuickReply(itemKey: string, itemLabel: string) {
+  return {
+    items: URGENCY_OPTIONS.map(u => ({
+      type: 'action',
+      action: {
+        type: 'postback',
+        label: `${u.emoji} ${u.label}`,
+        data: `action=ord-urgency&item=${encodeURIComponent(itemLabel)}&ik=${itemKey}&urg=${u.key}`,
+        displayText: `${u.emoji} ${u.label}`,
+      },
+    })),
+  };
+}
+
+/** Order confirmation Flex — shown to the requester */
+export function buildOrderConfirmFlex(itemLabel: string, urgencyKey: string): object {
+  const urg = URGENCY_OPTIONS.find(u => u.key === urgencyKey);
+  return {
+    type: 'bubble',
+    size: 'kilo',
+    body: {
+      type: 'box', layout: 'vertical',
+      contents: [
+        { type: 'text', text: '📦', size: 'xxl', align: 'center' },
+        { type: 'text', text: '発注依頼を送りました！', weight: 'bold', size: 'md', color: '#1e40af', align: 'center', margin: 'md' },
+        { type: 'separator', margin: 'lg' },
+        {
+          type: 'box', layout: 'horizontal', margin: 'lg', contents: [
+            { type: 'text', text: '品名', size: 'xs', color: '#6b7280', flex: 2 },
+            { type: 'text', text: itemLabel, size: 'sm', weight: 'bold', color: '#1f2937', flex: 5, align: 'end' },
+          ],
+        },
+        {
+          type: 'box', layout: 'horizontal', margin: 'sm', contents: [
+            { type: 'text', text: '緊急度', size: 'xs', color: '#6b7280', flex: 2 },
+            { type: 'text', text: urg ? `${urg.emoji} ${urg.label}` : urgencyKey, size: 'sm', weight: 'bold', color: '#1f2937', flex: 5, align: 'end' },
+          ],
+        },
+        { type: 'separator', margin: 'lg' },
+        {
+          type: 'box', layout: 'horizontal', margin: 'md', contents: [
+            { type: 'text', text: '⏳ 承認待ち', size: 'xs', weight: 'bold', color: '#92400E' },
+          ],
+        },
+      ],
+      backgroundColor: '#eff6ff',
+      paddingAll: '20px',
+    },
+  };
+}
+
+/** Push notification Flex sent to Ryutaro for order requests (with approve/reject) */
 export function buildOrderNotifyFlex(
   displayName: string | null,
-  itemName: string,
-  reason: string,
-  urgency: string,
-  submissionId: string,
+  itemLabel: string,
+  urgencyKey: string,
+  orderId: string,
   requesterFriendId: string,
 ): object {
   const name = displayName || '匿名メンバー';
-  const urgencyEmoji = urgency === '至急' ? '🔴' : urgency === '今週中' ? '📙' : '🟢';
+  const urg = URGENCY_OPTIONS.find(u => u.key === urgencyKey);
 
   return {
     type: 'bubble',
@@ -294,10 +408,9 @@ export function buildOrderNotifyFlex(
       type: 'box', layout: 'vertical',
       contents: [
         { type: 'text', text: '📦 新しい発注依頼', weight: 'bold', size: 'md', color: '#1e40af' },
-        { type: 'text', text: `${name}さんからの依頼`, size: 'xs', color: '#6b7280', margin: 'sm' },
+        { type: 'text', text: `${name}さんから`, size: 'xs', color: '#6b7280', margin: 'sm' },
       ],
-      backgroundColor: '#eff6ff',
-      paddingAll: '16px',
+      backgroundColor: '#eff6ff', paddingAll: '16px',
     },
     body: {
       type: 'box', layout: 'vertical',
@@ -305,20 +418,14 @@ export function buildOrderNotifyFlex(
         {
           type: 'box', layout: 'horizontal', contents: [
             { type: 'text', text: '品名', size: 'xs', color: '#6b7280', flex: 2 },
-            { type: 'text', text: itemName, size: 'sm', weight: 'bold', color: '#1f2937', flex: 5, align: 'end' },
-          ], margin: 'md',
+            { type: 'text', text: itemLabel, size: 'sm', weight: 'bold', color: '#1f2937', flex: 5, align: 'end' },
+          ],
         },
         {
-          type: 'box', layout: 'horizontal', contents: [
-            { type: 'text', text: '理由', size: 'xs', color: '#6b7280', flex: 2 },
-            { type: 'text', text: reason || '-', size: 'sm', color: '#1f2937', flex: 5, align: 'end', wrap: true },
-          ], margin: 'sm',
-        },
-        {
-          type: 'box', layout: 'horizontal', contents: [
+          type: 'box', layout: 'horizontal', margin: 'sm', contents: [
             { type: 'text', text: '緊急度', size: 'xs', color: '#6b7280', flex: 2 },
-            { type: 'text', text: `${urgencyEmoji} ${urgency}`, size: 'sm', weight: 'bold', color: '#1f2937', flex: 5, align: 'end' },
-          ], margin: 'sm',
+            { type: 'text', text: urg ? `${urg.emoji} ${urg.label}` : urgencyKey, size: 'sm', weight: 'bold', color: '#1f2937', flex: 5, align: 'end' },
+          ],
         },
       ],
       paddingAll: '16px',
@@ -329,18 +436,16 @@ export function buildOrderNotifyFlex(
         {
           type: 'button', style: 'primary', color: '#06C755', height: 'sm',
           action: {
-            type: 'postback',
-            label: '✅ 承認',
-            data: `action=ops-approve&sid=${submissionId}&fid=${requesterFriendId}`,
+            type: 'postback', label: '✅ 承認',
+            data: `action=ops-approve&oid=${orderId}&fid=${requesterFriendId}`,
             displayText: '✅ 承認します',
           },
         },
         {
           type: 'button', style: 'secondary', height: 'sm',
           action: {
-            type: 'postback',
-            label: '❌ 却下',
-            data: `action=ops-reject&sid=${submissionId}&fid=${requesterFriendId}`,
+            type: 'postback', label: '❌ 却下',
+            data: `action=ops-reject&oid=${orderId}&fid=${requesterFriendId}`,
             displayText: '❌ 却下します',
           },
         },

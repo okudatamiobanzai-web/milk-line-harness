@@ -29,9 +29,14 @@ import {
   buildItemRecordedText,
   buildCompleteFlex,
   buildTaskNotifyFlex,
+  buildOrderItemFlex,
+  buildUrgencyQuickReply,
+  buildOrderConfirmFlex,
   buildOrderNotifyFlex,
   buildCommentQuickReply,
   buildOrderResultFlex,
+  getOrderItemLabel,
+  ORDER_ITEMS,
 } from '../services/ops.js';
 import type { Env } from '../index.js';
 
@@ -333,9 +338,74 @@ async function handleEvent(
       return;
     }
 
-    // ─── milk ops: Approve order → set pending comment state ───
+    // ─── milk ops order: Item selected → ask urgency via Quick Reply ───
+    if (action === 'ord-item') {
+      const itemKey = params.get('item') || '';
+
+      // "その他" → テキスト入力待ち状態をmetadataに保存
+      if (itemKey === 'other') {
+        try {
+          const existing = await db.prepare('SELECT metadata FROM friends WHERE id = ?').bind(friend.id).first<{ metadata: string }>();
+          const meta = JSON.parse(existing?.metadata || '{}');
+          meta.ops_order_pending_item = true;
+          await db.prepare('UPDATE friends SET metadata = ?, updated_at = ? WHERE id = ?')
+            .bind(JSON.stringify(meta), jstNow(), friend.id).run();
+        } catch (e) { console.error('ord-item other error:', e); }
+
+        try {
+          await lineClient.replyMessage(event.replyToken, [
+            { type: 'text', text: '📝 発注したい品名を入力してください' },
+          ]);
+        } catch (e) { console.error('ord-item reply error:', e); }
+        return;
+      }
+
+      const itemLabel = getOrderItemLabel(itemKey);
+      try {
+        await lineClient.replyMessage(event.replyToken, [{
+          type: 'text',
+          text: `📦 ${itemLabel} ですね！\n緊急度を選んでください`,
+          quickReply: buildUrgencyQuickReply(itemKey, itemLabel),
+        } as Record<string, unknown>]);
+      } catch (e) { console.error('ord-item reply error:', e); }
+      return;
+    }
+
+    // ─── milk ops order: Urgency selected → save order + notify Ryutaro ───
+    if (action === 'ord-urgency') {
+      const itemLabel = decodeURIComponent(params.get('item') || '');
+      const urgencyKey = params.get('urg') || 'low';
+      const orderId = crypto.randomUUID();
+
+      // 1. Save to ops_orders
+      try {
+        await db.prepare(
+          `INSERT INTO ops_orders (id, friend_id, item_name, urgency, status, created_at, updated_at)
+           VALUES (?, ?, ?, ?, 'pending', ?, ?)`
+        ).bind(orderId, friend.id, itemLabel, urgencyKey, jstNow(), jstNow()).run();
+      } catch (e) { console.error('ord save error:', e); }
+
+      // 2. Reply with confirmation
+      const confirmFlex = buildOrderConfirmFlex(itemLabel, urgencyKey);
+      try {
+        await lineClient.replyMessage(event.replyToken, [
+          buildMessage('flex', JSON.stringify(confirmFlex)),
+        ]);
+      } catch (e) { console.error('ord confirm reply error:', e); }
+
+      // 3. Push to Ryutaro
+      const notifyFlex = buildOrderNotifyFlex(friend.display_name, itemLabel, urgencyKey, orderId, friend.id);
+      try {
+        await lineClient.pushMessage(RYUTARO_LINE_ID, [
+          buildMessage('flex', JSON.stringify(notifyFlex)),
+        ]);
+      } catch (e) { console.error('ord notify push error:', e); }
+      return;
+    }
+
+    // ─── milk ops: Approve/reject order → set pending comment state ───
     if (action === 'ops-approve' || action === 'ops-reject') {
-      const submissionId = params.get('sid') || '';
+      const orderId = params.get('oid') || '';
       const requesterFriendId = params.get('fid') || '';
       const isApprove = action === 'ops-approve';
 
@@ -344,7 +414,7 @@ async function handleEvent(
         const existing = await db.prepare('SELECT metadata FROM friends WHERE id = ?').bind(friend.id).first<{ metadata: string }>();
         const meta = JSON.parse(existing?.metadata || '{}');
         meta.ops_pending_approval = {
-          submissionId,
+          orderId,
           requesterFriendId,
           action: isApprove ? 'approved' : 'rejected',
         };
@@ -445,28 +515,46 @@ async function handleEvent(
     // チャットを作成/更新（オペレーター機能連携）
     await upsertChatOnMessage(db, friend.id);
 
-    // ─── milk ops: 承認コメント検出 ───
-    // Ryutaro が承認/却下後にコメントを送ると、依頼者に転送される
+    // ─── milk ops: 承認コメント検出 + 発注テキスト入力検出 ───
     try {
       const metaRow = await db.prepare('SELECT metadata FROM friends WHERE id = ?').bind(friend.id).first<{ metadata: string }>();
       const meta = JSON.parse(metaRow?.metadata || '{}');
+
+      // 「その他」の品名テキスト入力待ち
+      if (meta.ops_order_pending_item) {
+        delete meta.ops_order_pending_item;
+        await db.prepare('UPDATE friends SET metadata = ?, updated_at = ? WHERE id = ?')
+          .bind(JSON.stringify(meta), jstNow(), friend.id).run();
+
+        // 品名を受け取ったら緊急度を聞く
+        try {
+          await lineClient.replyMessage(event.replyToken, [{
+            type: 'text',
+            text: `📦 ${incomingText} ですね！\n緊急度を選んでください`,
+            quickReply: buildUrgencyQuickReply('other', incomingText),
+          } as Record<string, unknown>]);
+        } catch (e) { console.error('ord text reply error:', e); }
+        return;
+      }
+
+      // Ryutaro の承認/却下コメント処理
       if (meta.ops_pending_approval) {
-        const { submissionId, requesterFriendId, action: approvalAction } = meta.ops_pending_approval;
+        const { orderId, requesterFriendId, action: approvalAction } = meta.ops_pending_approval;
         const isApproved = approvalAction === 'approved';
         const comment = incomingText === 'コメントなし' ? null : incomingText;
 
         // 1. Update ops_orders status
         try {
           await db.prepare(
-            `UPDATE ops_orders SET status = ?, comment = ?, approved_by = ?, updated_at = ? WHERE submission_id = ?`
-          ).bind(isApproved ? 'approved' : 'rejected', comment, friend.id, jstNow(), submissionId).run();
+            `UPDATE ops_orders SET status = ?, comment = ?, approved_by = ?, updated_at = ? WHERE id = ?`
+          ).bind(isApproved ? 'approved' : 'rejected', comment, friend.id, jstNow(), orderId).run();
         } catch (e) {
           console.error('ops order update error:', e);
         }
 
         // 2. Get order info for notification
-        const order = await db.prepare('SELECT item_name FROM ops_orders WHERE submission_id = ?')
-          .bind(submissionId).first<{ item_name: string }>();
+        const order = await db.prepare('SELECT item_name FROM ops_orders WHERE id = ?')
+          .bind(orderId).first<{ item_name: string }>();
         const itemName = order?.item_name || '（不明な品目）';
 
         // 3. Push result to requester
@@ -490,7 +578,7 @@ async function handleEvent(
 
         // 5. Confirm to Ryutaro
         const confirmText = isApproved
-          ? `✅ 承認完了！${comment ? `コメント「${comment}」を` : ''}${order?.item_name || ''}の依頼者に通知しました。`
+          ? `✅ 承認完了！${comment ? `コメント「${comment}」を` : ''}${itemName}の依頼者に通知しました。`
           : `❌ 却下しました。${comment ? `コメント「${comment}」を` : ''}依頼者に通知しました。`;
         try {
           await lineClient.replyMessage(event.replyToken, [{ type: 'text', text: confirmText }]);
@@ -500,7 +588,7 @@ async function handleEvent(
         return;
       }
     } catch (e) {
-      console.error('ops comment detection error:', e);
+      console.error('ops state detection error:', e);
     }
 
     // 配信時間設定: 「配信時間は○時」「○時に届けて」等のパターンを検出
