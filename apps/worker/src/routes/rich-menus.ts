@@ -111,6 +111,90 @@ richMenus.delete('/api/friends/:friendId/rich-menu', async (c) => {
 
 export { richMenus };
 
+// ─── Rich Menu Alias endpoints ─────────────────────────────────────────────
+
+// GET /api/rich-menus/aliases — list all aliases
+richMenus.get('/api/rich-menus/aliases', async (c) => {
+  try {
+    const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
+    const result = await lineClient.listRichMenuAliases();
+    return c.json({ success: true, data: result.aliases ?? [] });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('GET /api/rich-menus/aliases error:', message);
+    return c.json({ success: false, error: `Failed to list aliases: ${message}` }, 500);
+  }
+});
+
+// POST /api/rich-menus/aliases — create alias
+richMenus.post('/api/rich-menus/aliases', async (c) => {
+  try {
+    const body = await c.req.json<{ richMenuAliasId: string; richMenuId: string }>();
+    if (!body.richMenuAliasId || !body.richMenuId) {
+      return c.json({ success: false, error: 'richMenuAliasId and richMenuId are required' }, 400);
+    }
+    const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
+    await lineClient.createRichMenuAlias(body.richMenuId, body.richMenuAliasId);
+    return c.json({ success: true, data: null }, 201);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('POST /api/rich-menus/aliases error:', message);
+    return c.json({ success: false, error: `Failed to create alias: ${message}` }, 500);
+  }
+});
+
+// PUT /api/rich-menus/aliases/:aliasId — update alias
+richMenus.put('/api/rich-menus/aliases/:aliasId', async (c) => {
+  try {
+    const aliasId = c.req.param('aliasId');
+    const body = await c.req.json<{ richMenuId: string }>();
+    if (!body.richMenuId) {
+      return c.json({ success: false, error: 'richMenuId is required' }, 400);
+    }
+    const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
+    await lineClient.updateRichMenuAlias(aliasId, body.richMenuId);
+    return c.json({ success: true, data: null });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('PUT /api/rich-menus/aliases/:aliasId error:', message);
+    return c.json({ success: false, error: `Failed to update alias: ${message}` }, 500);
+  }
+});
+
+// DELETE /api/rich-menus/aliases/:aliasId — delete alias
+richMenus.delete('/api/rich-menus/aliases/:aliasId', async (c) => {
+  try {
+    const aliasId = c.req.param('aliasId');
+    const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
+    await lineClient.deleteRichMenuAlias(aliasId);
+    return c.json({ success: true, data: null });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('DELETE /api/rich-menus/aliases/:aliasId error:', message);
+    return c.json({ success: false, error: `Failed to delete alias: ${message}` }, 500);
+  }
+});
+
+// GET /api/rich-menus/:id/image — download rich menu image (proxy)
+richMenus.get('/api/rich-menus/:id/image', async (c) => {
+  try {
+    const richMenuId = c.req.param('id');
+    const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
+    const { data, contentType } = await lineClient.downloadRichMenuImage(richMenuId);
+    return new Response(data, {
+      headers: {
+        'Content-Type': contentType,
+        'Cache-Control': 'public, max-age=3600',
+        'Access-Control-Allow-Origin': '*',
+      },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('GET /api/rich-menus/:id/image error:', message);
+    return c.json({ success: false, error: `Failed to download image: ${message}` }, 500);
+  }
+});
+
 // POST /api/rich-menus/:id/image — upload rich menu image (accepts base64 body or binary)
 richMenus.post('/api/rich-menus/:id/image', async (c) => {
   try {

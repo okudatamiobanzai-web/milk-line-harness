@@ -19,7 +19,7 @@ export class LineClient {
   private async request<T = unknown>(
     path: string,
     body: object,
-    method: 'GET' | 'POST' | 'DELETE' = 'POST',
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'POST',
   ): Promise<T> {
     const url = `${LINE_API_BASE}${path}`;
 
@@ -138,6 +138,62 @@ export class LineClient {
       {},
       'GET',
     );
+  }
+
+  // ─── Rich Menu Alias ──────────────────────────────────────────────────────
+
+  async createRichMenuAlias(richMenuId: string, richMenuAliasId: string): Promise<void> {
+    await this.request('/richmenu/alias', { richMenuAliasId, richMenuId });
+  }
+
+  async getRichMenuAlias(richMenuAliasId: string): Promise<{ richMenuAliasId: string; richMenuId: string }> {
+    return this.request<{ richMenuAliasId: string; richMenuId: string }>(
+      `/richmenu/alias/${encodeURIComponent(richMenuAliasId)}`,
+      {},
+      'GET',
+    );
+  }
+
+  async updateRichMenuAlias(richMenuAliasId: string, richMenuId: string): Promise<void> {
+    await this.request(
+      `/richmenu/alias/${encodeURIComponent(richMenuAliasId)}`,
+      { richMenuId },
+      'PUT',
+    );
+  }
+
+  async deleteRichMenuAlias(richMenuAliasId: string): Promise<void> {
+    await this.request(
+      `/richmenu/alias/${encodeURIComponent(richMenuAliasId)}`,
+      {},
+      'DELETE',
+    );
+  }
+
+  async listRichMenuAliases(): Promise<{ aliases: { richMenuAliasId: string; richMenuId: string }[] }> {
+    return this.request<{ aliases: { richMenuAliasId: string; richMenuId: string }[] }>(
+      '/richmenu/alias/list',
+      {},
+      'GET',
+    );
+  }
+
+  // ─── Rich Menu Image Download ─────────────────────────────────────────────
+
+  /** Download rich menu image as binary. Returns ArrayBuffer + content type. */
+  async downloadRichMenuImage(richMenuId: string): Promise<{ data: ArrayBuffer; contentType: string }> {
+    const url = `https://api-data.line.me/v2/bot/richmenu/${encodeURIComponent(richMenuId)}/content`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${this.channelAccessToken}` },
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`LINE API error: ${res.status} ${res.statusText} — ${text}`);
+    }
+    const data = await res.arrayBuffer();
+    const contentType = res.headers.get('content-type') ?? 'image/png';
+    return { data, contentType };
   }
 
   // ─── Helpers ──────────────────────────────────────────────────────────────

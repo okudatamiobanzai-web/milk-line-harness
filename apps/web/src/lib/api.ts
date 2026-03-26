@@ -485,4 +485,58 @@ export const api = {
     getMigration: (migrationId: string) =>
       fetchApi<ApiResponse<AccountMigration>>(`/api/accounts/migrations/${migrationId}`),
   },
+  richMenus: {
+    list: () =>
+      fetchApi<ApiResponse<any[]>>('/api/rich-menus'),
+    create: (data: any) =>
+      fetchApi<ApiResponse<{ richMenuId: string }>>('/api/rich-menus', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    delete: (id: string) =>
+      fetchApi<ApiResponse<null>>(`/api/rich-menus/${id}`, { method: 'DELETE' }),
+    setDefault: (id: string) =>
+      fetchApi<ApiResponse<null>>(`/api/rich-menus/${id}/default`, { method: 'POST' }),
+    uploadImage: async (id: string, base64: string, contentType: string) => {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787'
+      const apiKey = typeof window !== 'undefined' ? localStorage.getItem('lh_api_key') || '' : ''
+      const res = await fetch(`${API_BASE}/api/rich-menus/${id}/image`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({ image: base64, contentType }),
+      })
+      if (!res.ok) throw new Error(`API error: ${res.status}`)
+      return res.json()
+    },
+    getImageUrl: (id: string) => {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787'
+      return `${API_BASE}/api/rich-menus/${id}/image`
+    },
+    linkToFriend: (friendId: string, richMenuId: string) =>
+      fetchApi<ApiResponse<null>>(`/api/friends/${friendId}/rich-menu`, {
+        method: 'POST',
+        body: JSON.stringify({ richMenuId }),
+      }),
+    unlinkFromFriend: (friendId: string) =>
+      fetchApi<ApiResponse<null>>(`/api/friends/${friendId}/rich-menu`, { method: 'DELETE' }),
+    aliases: {
+      list: () =>
+        fetchApi<ApiResponse<{ richMenuAliasId: string; richMenuId: string }[]>>('/api/rich-menus/aliases'),
+      create: (data: { richMenuAliasId: string; richMenuId: string }) =>
+        fetchApi<ApiResponse<null>>('/api/rich-menus/aliases', {
+          method: 'POST',
+          body: JSON.stringify(data),
+        }),
+      update: (aliasId: string, richMenuId: string) =>
+        fetchApi<ApiResponse<null>>(`/api/rich-menus/aliases/${aliasId}`, {
+          method: 'PUT',
+          body: JSON.stringify({ richMenuId }),
+        }),
+      delete: (aliasId: string) =>
+        fetchApi<ApiResponse<null>>(`/api/rich-menus/aliases/${aliasId}`, { method: 'DELETE' }),
+    },
+  },
 }
