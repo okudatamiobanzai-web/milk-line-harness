@@ -118,6 +118,48 @@ h1{font-size:28px;font-weight:800;margin-bottom:8px}
 </html>`);
 });
 
+
+// Auto-reply CRUD (directly on auto_replies table)
+app.get('/api/auto-replies', async (c) => {
+  try {
+    const result = await c.env.DB.prepare('SELECT * FROM auto_replies ORDER BY created_at ASC').all();
+    return c.json({ success: true, data: result.results });
+  } catch (err) {
+    return c.json({ success: false, error: String(err) }, 500);
+  }
+});
+
+app.post('/api/auto-replies', async (c) => {
+  try {
+    const body = await c.req.json<{
+      keyword: string;
+      matchType?: 'exact' | 'contains';
+      responseType?: 'text' | 'flex';
+      responseContent: string;
+      lineAccountId?: string;
+    }>();
+    const id = crypto.randomUUID();
+    const now = new Date().toISOString();
+    await c.env.DB.prepare(
+      `INSERT INTO auto_replies (id, keyword, match_type, response_type, response_content, is_active, line_account_id, created_at)
+       VALUES (?, ?, ?, ?, ?, 1, ?, ?)`
+    ).bind(id, body.keyword, body.matchType ?? 'contains', body.responseType ?? 'text', body.responseContent, body.lineAccountId ?? null, now).run();
+    return c.json({ success: true, data: { id, keyword: body.keyword } }, 201);
+  } catch (err) {
+    return c.json({ success: false, error: String(err) }, 500);
+  }
+});
+
+app.delete('/api/auto-replies/:id', async (c) => {
+  try {
+    const id = c.req.param('id');
+    await c.env.DB.prepare('DELETE FROM auto_replies WHERE id = ?').bind(id).run();
+    return c.json({ success: true });
+  } catch (err) {
+    return c.json({ success: false, error: String(err) }, 500);
+  }
+});
+
 // 404 fallback
 app.notFound((c) => c.json({ success: false, error: 'Not found' }, 404));
 
