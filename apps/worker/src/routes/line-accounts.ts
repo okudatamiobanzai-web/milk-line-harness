@@ -167,4 +167,46 @@ lineAccounts.delete('/api/line-accounts/:id', async (c) => {
   }
 });
 
+// GET /api/line-quota - get LINE message quota and consumption
+lineAccounts.get('/api/line-quota', async (c) => {
+  try {
+    const accessToken = c.env.LINE_CHANNEL_ACCESS_TOKEN;
+
+    const [quotaRes, consumptionRes] = await Promise.all([
+      fetch('https://api.line.me/v2/bot/message/quota', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }),
+      fetch('https://api.line.me/v2/bot/message/quota/consumption', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }),
+    ]);
+
+    const quota = await quotaRes.json() as { type: string; value?: number };
+    const consumption = await consumptionRes.json() as { totalUsage: number };
+
+    // Also get our internal message count from DB
+    const db = c.env.DB;
+    const now = new Date();
+    const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    const internalCount = await db
+      .prepare(`SELECT COUNT(*) as count FROM messages_log WHERE direction = 'outgoing' AND created_at >= ?`)
+      .bind(monthStart)
+      .first<{ count: number }>();
+
+    return c.json({
+      success: true,
+      data: {
+        quotaType: quota.type,             // "limited" or "none"(=unlimited on paid plan)
+        quotaValue: quota.value ?? null,    // free tier: 200/500, paid: null
+        totalUsage: consumption.totalUsage, // LINE API count (push only)
+        internalCount: internalCount?.count ?? 0, // our DB count
+        remaining: quota.value != null ? Math.max(0, quota.value - consumption.totalUsage) : null,
+      },
+    });
+  } catch (err) {
+    console.error('GET /api/line-quota error:', err);
+    return c.json({ success: false, error: 'Internal server error' }, 500);
+  }
+});
+
 export { lineAccounts };

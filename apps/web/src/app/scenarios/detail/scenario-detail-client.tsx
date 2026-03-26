@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback } from 'react'
 
 import Link from 'next/link'
 import type { Scenario, ScenarioStep, ScenarioTriggerType, MessageType } from '@line-crm/shared'
-import { api } from '@/lib/api'
+import { api, fetchApi } from '@/lib/api'
 import Header from '@/components/layout/header'
+import FlexMessagePreview from '@/components/scenarios/flex-preview'
 
 type ScenarioWithSteps = Scenario & { steps: ScenarioStep[] }
 
@@ -141,6 +142,20 @@ export default function ScenarioDetailClient({ scenarioId }: { scenarioId: strin
         setTestFriends(items)
       }
     }).catch(() => {})
+  }, [])
+
+  // Flexプレビュー
+  const [previewContent, setPreviewContent] = useState<string | null>(null)
+
+  // LINE配信枠
+  const [quota, setQuota] = useState<{
+    quotaType: string; quotaValue: number | null; totalUsage: number; remaining: number | null; internalCount: number;
+  } | null>(null)
+
+  useEffect(() => {
+    fetchApi<{ success: boolean; data: typeof quota }>('/api/line-quota')
+      .then(res => { if (res.success) setQuota(res.data) })
+      .catch(() => {})
   }, [])
 
   const loadScenario = useCallback(async () => {
@@ -434,6 +449,46 @@ export default function ScenarioDetailClient({ scenarioId }: { scenarioId: strin
         )}
       </div>
 
+      {/* LINE 配信枠 */}
+      {quota && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <h3 className="text-sm font-semibold text-gray-800">📊 今月の配信状況</h3>
+              <span className="text-xs text-gray-400">
+                {quota.quotaType === 'none' ? '従量課金プラン' : `無料枠 ${quota.quotaValue?.toLocaleString()}通`}
+              </span>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <p className="text-xs text-gray-400">LINE API送信数</p>
+                <p className="text-lg font-bold text-gray-900">{quota.totalUsage.toLocaleString()}<span className="text-xs text-gray-400 font-normal">通</span></p>
+              </div>
+              {quota.remaining !== null && (
+                <div className="text-right">
+                  <p className="text-xs text-gray-400">残り</p>
+                  <p className={`text-lg font-bold ${quota.remaining < 50 ? 'text-red-600' : quota.remaining < 100 ? 'text-yellow-600' : 'text-green-600'}`}>
+                    {quota.remaining.toLocaleString()}<span className="text-xs text-gray-400 font-normal">通</span>
+                  </p>
+                </div>
+              )}
+              <div className="text-right">
+                <p className="text-xs text-gray-400">DB記録</p>
+                <p className="text-sm text-gray-600">{quota.internalCount.toLocaleString()}通</p>
+              </div>
+            </div>
+          </div>
+          {quota.remaining !== null && quota.quotaValue && (
+            <div className="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${quota.remaining < 50 ? 'bg-red-500' : quota.remaining < 100 ? 'bg-yellow-500' : 'bg-green-500'}`}
+                style={{ width: `${Math.min(100, (quota.totalUsage / quota.quotaValue) * 100)}%` }}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Steps */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-4">
@@ -598,6 +653,15 @@ export default function ScenarioDetailClient({ scenarioId }: { scenarioId: strin
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
+                      {step.messageType === 'flex' && (
+                        <button
+                          onClick={() => setPreviewContent(step.messageContent)}
+                          className="text-xs text-purple-600 hover:text-purple-700 px-2 py-1 rounded hover:bg-purple-50 transition-colors min-h-[44px] flex items-center"
+                          title="プレビュー"
+                        >
+                          👁 プレビュー
+                        </button>
+                      )}
                       <button
                         onClick={() => handleTestSend(step)}
                         disabled={sendingStepId === step.id}
@@ -631,6 +695,11 @@ export default function ScenarioDetailClient({ scenarioId }: { scenarioId: strin
           </div>
         )}
       </div>
+
+      {/* Flex プレビューモーダル */}
+      {previewContent && (
+        <FlexMessagePreview content={previewContent} onClose={() => setPreviewContent(null)} />
+      )}
     </div>
   )
 }
