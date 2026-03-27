@@ -252,3 +252,33 @@ export default function FlexMessagePreview({ content, onClose }: { content: stri
     </div>
   )
 }
+
+// ─── Inline Flex Preview (no modal wrapper) ─────────────────────────────────
+export function InlineFlexPreview({ content }: { content: string }) {
+  let parsed: FlexNode | null = null
+  try {
+    parsed = JSON.parse(content) as FlexNode
+  } catch {
+    return <p className="text-xs text-red-500">JSONパースエラー</p>
+  }
+
+  const isCarousel = parsed?.type === 'carousel'
+  const bubbles: FlexNode[] = isCarousel
+    ? (parsed?.contents as FlexNode[] || [])
+    : parsed?.type === 'bubble'
+      ? [parsed]
+      : []
+
+  if (bubbles.length === 0) return <p className="text-xs text-gray-400">プレビュー不可</p>
+
+  return (
+    <div className="flex gap-3 overflow-x-auto pb-2">
+      {bubbles.map((bubble, i) => (
+        <div key={i} className="flex-shrink-0">
+          {isCarousel && <p className="text-[10px] text-gray-400 mb-1 text-center">{i + 1}/{bubbles.length}</p>}
+          <BubblePreview bubble={bubble} />
+        </div>
+      ))}
+    </div>
+  )
+}

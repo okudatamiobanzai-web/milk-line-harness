@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '@/lib/api'
 import Header from '@/components/layout/header'
-import FlexMessagePreview from '@/components/scenarios/flex-preview'
+import { InlineFlexPreview } from '@/components/scenarios/flex-preview'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -444,7 +444,7 @@ export default function AutoRepliesPage() {
                     </div>
                     <div className="p-3 bg-gray-50 border-t" style={{ maxHeight: '200px', overflow: 'hidden' }}>
                       <div className="transform scale-[0.6] origin-top-left" style={{ width: '166%' }}>
-                        <FlexMessagePreview content={JSON.stringify(t.json)} onClose={() => {}} />
+                        <InlineFlexPreview content={JSON.stringify(t.json)} />
                       </div>
                     </div>
                     <div className="px-4 py-3 bg-white border-t text-center">
@@ -555,7 +555,7 @@ export default function AutoRepliesPage() {
                 <p className="text-xs font-medium text-gray-500 mb-3">LINEプレビュー</p>
                 {editorResponseType === 'flex' && editorContent && !editorJsonError ? (
                   <div className="bg-[#7494C0] rounded-2xl p-4 min-h-[300px]">
-                    <FlexMessagePreview content={editorContent} onClose={() => {}} />
+                    <InlineFlexPreview content={editorContent} />
                   </div>
                 ) : editorResponseType === 'text' && editorContent ? (
                   <div className="bg-[#7494C0] rounded-2xl p-4 min-h-[200px]">
@@ -684,7 +684,7 @@ export default function AutoRepliesPage() {
               {previewRule === rule.id && rule.response_type === 'flex' && (
                 <div className="border-t bg-gray-50 p-4">
                   <div className="bg-[#7494C0] rounded-2xl p-4 max-w-[340px] mx-auto">
-                    <FlexMessagePreview content={rule.response_content} onClose={() => setPreviewRule(null)} />
+                    <InlineFlexPreview content={rule.response_content} />
                   </div>
                 </div>
               )}
