@@ -119,8 +119,8 @@ Claude Code ──→ Workers API ──→ D1
 ### 1. セットアップ
 
 ```bash
-git clone https://github.com/Shudesu/line-harness-oss.git
-cd line-harness-oss
+git clone https://github.com/okudatamiobanzai-web/milk-line-harness.git
+cd milk-line-harness
 pnpm install
 ```
 
@@ -183,7 +183,7 @@ curl -H "Authorization: Bearer YOUR_API_KEY" \
 ## プロジェクト構成
 
 ```
-line-harness-oss/
+milk-line-harness/
 ├── apps/
 │   ├── worker/           # Cloudflare Workers API (Hono)
 │   ├── web/              # Next.js 15 管理画面
@@ -203,7 +203,7 @@ line-harness-oss/
 
 ## API エンドポイント（抜粋）
 
-25 のルートファイル、100+ エンドポイント。全一覧は [Wiki: API Reference](https://github.com/Shudesu/line-harness-oss/wiki/20-API-Reference) を参照。
+25 のルートファイル、100+ エンドポイント。全一覧は [Wiki: API Reference](https://github.com/okudatamiobanzai-web/milk-line-harness/wiki/20-API-Reference) を参照。
 
 ```bash
 # 友だち一覧
@@ -230,17 +230,17 @@ POST /api/automations
 
 ## ドキュメント
 
-**[📖 Wiki（全23ページ）](https://github.com/Shudesu/line-harness-oss/wiki)**
+**[📖 Wiki（全23ページ）](https://github.com/okudatamiobanzai-web/milk-line-harness/wiki)**
 
 | カテゴリ | ページ |
 |---------|--------|
-| はじめに | [Home](https://github.com/Shudesu/line-harness-oss/wiki/Home) · [Getting Started](https://github.com/Shudesu/line-harness-oss/wiki/Getting-Started) · [Architecture](https://github.com/Shudesu/line-harness-oss/wiki/Architecture) · [Configuration](https://github.com/Shudesu/line-harness-oss/wiki/Configuration) |
-| 配信 | [Scenarios](https://github.com/Shudesu/line-harness-oss/wiki/Scenarios) · [Broadcasts](https://github.com/Shudesu/line-harness-oss/wiki/Broadcasts) · [Reminders](https://github.com/Shudesu/line-harness-oss/wiki/12-Reminders) |
-| CRM | [Friends](https://github.com/Shudesu/line-harness-oss/wiki/Friends) · [Tags](https://github.com/Shudesu/line-harness-oss/wiki/Tags) · [Scoring](https://github.com/Shudesu/line-harness-oss/wiki/13-Scoring) · [Chat](https://github.com/Shudesu/line-harness-oss/wiki/16-Chat-and-AutoReply) |
-| マーケ | [Rich Menus](https://github.com/Shudesu/line-harness-oss/wiki/09-Rich-Menus) · [Tracked Links](https://github.com/Shudesu/line-harness-oss/wiki/10-Tracked-Links) · [Forms & LIFF](https://github.com/Shudesu/line-harness-oss/wiki/11-Forms-and-LIFF) · [CV & Affiliates](https://github.com/Shudesu/line-harness-oss/wiki/17-CV-Tracking-and-Affiliates) |
-| 自動化 | [Automation](https://github.com/Shudesu/line-harness-oss/wiki/14-Automation) · [Webhooks](https://github.com/Shudesu/line-harness-oss/wiki/15-Webhooks-and-Notifications) |
-| 安全性 | [Multi-Account & BAN](https://github.com/Shudesu/line-harness-oss/wiki/18-Multi-Account-and-BAN) |
-| 開発 | [SDK Reference](https://github.com/Shudesu/line-harness-oss/wiki/19-SDK-Reference) · [API Reference](https://github.com/Shudesu/line-harness-oss/wiki/20-API-Reference) · [Deployment](https://github.com/Shudesu/line-harness-oss/wiki/21-Deployment) · [Operations](https://github.com/Shudesu/line-harness-oss/wiki/22-Operations) · [Claude Code](https://github.com/Shudesu/line-harness-oss/wiki/23-Claude-Code-Integration) |
+| はじめに | [Home](https://github.com/okudatamiobanzai-web/milk-line-harness/wiki/Home) · [Getting Started](https://github.com/okudatamiobanzai-web/milk-line-harness/wiki/Getting-Started) · [Architecture](https://github.com/okudatamiobanzai-web/milk-line-harness/wiki/Architecture) · [Configuration](https://github.com/okudatamiobanzai-web/milk-line-harness/wiki/Configuration) |
+| 配信 | [Scenarios](https://github.com/okudatamiobanzai-web/milk-line-harness/wiki/Scenarios) · [Broadcasts](https://github.com/okudatamiobanzai-web/milk-line-harness/wiki/Broadcasts) · [Reminders](https://github.com/okudatamiobanzai-web/milk-line-harness/wiki/12-Reminders) |
+| CRM | [Friends](https://github.com/okudatamiobanzai-web/milk-line-harness/wiki/Friends) · [Tags](https://github.com/okudatamiobanzai-web/milk-line-harness/wiki/Tags) · [Scoring](https://github.com/okudatamiobanzai-web/milk-line-harness/wiki/13-Scoring) · [Chat](https://github.com/okudatamiobanzai-web/milk-line-harness/wiki/16-Chat-and-AutoReply) |
+| マーケ | [Rich Menus](https://github.com/okudatamiobanzai-web/milk-line-harness/wiki/09-Rich-Menus) · [Tracked Links](https://github.com/okudatamiobanzai-web/milk-line-harness/wiki/10-Tracked-Links) · [Forms & LIFF](https://github.com/okudatamiobanzai-web/milk-line-harness/wiki/11-Forms-and-LIFF) · [CV & Affiliates](https://github.com/okudatamiobanzai-web/milk-line-harness/wiki/17-CV-Tracking-and-Affiliates) |
+| 自動化 | [Automation](https://github.com/okudatamiobanzai-web/milk-line-harness/wiki/14-Automation) · [Webhooks](https://github.com/okudatamiobanzai-web/milk-line-harness/wiki/15-Webhooks-and-Notifications) |
+| 安全性 | [Multi-Account & BAN](https://github.com/okudatamiobanzai-web/milk-line-harness/wiki/18-Multi-Account-and-BAN) |
+| 開発 | [SDK Reference](https://github.com/okudatamiobanzai-web/milk-line-harness/wiki/19-SDK-Reference) · [API Reference](https://github.com/okudatamiobanzai-web/milk-line-harness/wiki/20-API-Reference) · [Deployment](https://github.com/okudatamiobanzai-web/milk-line-harness/wiki/21-Deployment) · [Operations](https://github.com/okudatamiobanzai-web/milk-line-harness/wiki/22-Operations) · [Claude Code](https://github.com/okudatamiobanzai-web/milk-line-harness/wiki/23-Claude-Code-Integration) |
 
 ---
 
@@ -268,7 +268,7 @@ pnpm db:migrate:local
 
 ## コントリビュート
 
-Issue・PR 歓迎。[Wiki](https://github.com/Shudesu/line-harness-oss/wiki) を読んでからの参加を推奨。
+Issue・PR 歓迎。[Wiki](https://github.com/okudatamiobanzai-web/milk-line-harness/wiki) を読んでからの参加を推奨。
 
 ---
 
