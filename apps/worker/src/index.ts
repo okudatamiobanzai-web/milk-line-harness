@@ -152,6 +152,32 @@ app.post('/api/auto-replies', async (c) => {
   }
 });
 
+app.put('/api/auto-replies/:id', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const body = await c.req.json<{
+      keyword?: string;
+      matchType?: 'exact' | 'contains';
+      responseType?: 'text' | 'flex';
+      responseContent?: string;
+      isActive?: boolean;
+    }>();
+    const sets: string[] = [];
+    const vals: unknown[] = [];
+    if (body.keyword !== undefined) { sets.push('keyword = ?'); vals.push(body.keyword); }
+    if (body.matchType !== undefined) { sets.push('match_type = ?'); vals.push(body.matchType); }
+    if (body.responseType !== undefined) { sets.push('response_type = ?'); vals.push(body.responseType); }
+    if (body.responseContent !== undefined) { sets.push('response_content = ?'); vals.push(body.responseContent); }
+    if (body.isActive !== undefined) { sets.push('is_active = ?'); vals.push(body.isActive ? 1 : 0); }
+    if (sets.length === 0) return c.json({ success: false, error: 'No fields to update' }, 400);
+    vals.push(id);
+    await c.env.DB.prepare(`UPDATE auto_replies SET ${sets.join(', ')} WHERE id = ?`).bind(...vals).run();
+    return c.json({ success: true, data: { id } });
+  } catch (err) {
+    return c.json({ success: false, error: String(err) }, 500);
+  }
+});
+
 app.delete('/api/auto-replies/:id', async (c) => {
   try {
     const id = c.req.param('id');

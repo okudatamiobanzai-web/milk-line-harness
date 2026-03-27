@@ -298,6 +298,24 @@ export const api = {
     delete: (id: string) =>
       fetchApi<ApiResponse<null>>(`/api/templates/${id}`, { method: 'DELETE' }),
   },
+  autoReplies: {
+    list: () =>
+      fetchApi<ApiResponse<{ id: string; keyword: string; match_type: string; response_type: string; response_content: string; is_active: number; line_account_id: string | null; created_at: string }[]>>(
+        '/api/auto-replies',
+      ),
+    create: (data: { keyword: string; matchType?: string; responseType?: string; responseContent: string }) =>
+      fetchApi<ApiResponse<{ id: string; keyword: string }>>(
+        '/api/auto-replies',
+        { method: 'POST', body: JSON.stringify(data) },
+      ),
+    update: (id: string, data: { keyword?: string; matchType?: string; responseType?: string; responseContent?: string; isActive?: boolean }) =>
+      fetchApi<ApiResponse<{ id: string }>>(
+        `/api/auto-replies/${id}`,
+        { method: 'PUT', body: JSON.stringify(data) },
+      ),
+    delete: (id: string) =>
+      fetchApi<ApiResponse<null>>(`/api/auto-replies/${id}`, { method: 'DELETE' }),
+  },
   automations: {
     list: (params?: { accountId?: string }) => {
       const query = params?.accountId ? '?lineAccountId=' + params.accountId : ''
