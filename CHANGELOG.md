@@ -1,5 +1,70 @@
 # Changelog
 
+## v0.3.0 — milk カスタマイズ (2026-03-25〜03-27)
+
+milk coworking 専用のカスタマイズ。56コミット、5日間で構築。
+
+### Upgrade
+```bash
+wrangler d1 execute line-crm --file=packages/db/migrations/009_ops.sql --remote
+```
+
+### New Features
+
+#### リッチメニュー管理画面
+- リッチメニュー一覧表示（AuthImage: 認証付き画像表示）
+- ビジュアルエリアエディタ（ドラッグで矩形描画→エリア追加）
+- 画像アップロード（ドラッグ&ドロップ対応）
+- milkプリセット（Tab A/B 3×2グリッド自動入力）
+- エイリアスCRUD（タブ切替用）
+- デフォルト設定・友だち個別割当
+- Worker: Alias API 5エンドポイント + 画像ダウンロードプロキシ
+- line-sdk: PUT対応 + Alias/Image Downloadメソッド
+
+#### 3タブリッチメニュー
+- Tab A「milkを使う」（非会員デフォルト）— 営業時間/はじめての方へ/質問/見学予約/FAQ/地域切替
+- Tab A'「milkメンバー」（月額会員）— milk ops/発注依頼/会員グループ/地域切替
+- Tab B「地域とつながる」（全ユーザー共通）— ゆびとま/ミセル/しるべ旅
+
+#### 自動応答 + プロファイリング
+- キーワードマッチ自動応答8件（Flex Message + postbackタグ付与）
+- 自動応答管理ページ（Flexプレビュー付き、Worker PUT対応）
+- テンプレートギャラリー（9テンプレート）
+- AI返信プロンプト（子連れ無料・学生・雰囲気対応）
+- プロファイリング用タグ11種（interest:dropin, purpose:work 等）
+
+#### ステップ配信
+- 30日ステップ配信シナリオ（LP風Flex 8通、friend_addトリガー）
+- postbackボタンからタグ自動付与
+- テスト送信ボタン（友だちセレクター付き）
+- Flexビジュアルプレビューモーダル
+
+#### milk ops（備品管理LINE統合）
+- ops.tsルート + services/ops.ts（タスク報告・発注承認フロー）
+- DBテーブル: ops_reports, ops_orders
+- LIFFチェックボックスUI（apps/liff/src/ops.ts）
+- postbackワンタップ報告（LIFF未デプロイのためフォールバック）
+- 5カテゴリ: 整理/掃除/補充/荷物/発注
+
+#### 管理画面 UI
+- LINE配信枠ウィジェット（月200通無料枠 残り表示）
+- InlineFlexPreview（モーダル不要のインラインプレビュー）
+- ビジュアルエリアプレビュー（リッチメニュー画像上に色分けオーバーレイ）
+
+### CI/CD
+- deploy-web.yml: Cloudflare Pages自動デプロイ
+- deploy-liff.yml: LIFF自動デプロイ
+- NEXT_PUBLIC_API_URL ビルド時注入
+- D1マイグレーション自動実行（continue-on-error）
+
+### Bug Fixes
+- README内リポジトリURL修正（Shudesu/line-harness-oss → okudatamiobanzai-web/milk-line-harness）
+- CcPromptButton props形式統一
+- wrangler-action → npx wrangler@3（monorepo対応）
+- AuthImage: fetchImageBlob使用（認証付き画像取得）
+
+---
+
 ## v0.2.0 (2026-03-25)
 
 ### Breaking Changes
@@ -28,25 +93,3 @@ wrangler d1 execute line-crm --file=packages/db/migrations/008_multi_account.sql
 ### Bug Fixes
 - JST timestamp standardization (was UTC, causing wrong delivery times)
 - Auth unification (affiliates page + login fallback URL)
-- Calendar slot time calculation (was offset by 9 hours)
-- ID token verification using correct login channel for multi-account
-
-## v0.1.0 (2026-03-22)
-
-### Initial Release
-- Step delivery (scenarios with delay_minutes timing)
-- Broadcasts (scheduled, segmented, batch sending)
-- Tag-based segmentation
-- Rich menu management
-- Forms & LIFF
-- Tracked links
-- Reminders
-- Lead scoring
-- IF-THEN automation engine
-- Webhooks (incoming/outgoing) + notifications
-- Operator chat + auto-reply
-- Conversion tracking + affiliate system
-- Multi-account tables (line_accounts)
-- TypeScript SDK (41 tests)
-- OpenAPI/Swagger docs
-- Admin panel (Next.js 15)
