@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { api } from '@/lib/api'
 import Header from '@/components/layout/header'
 import { InlineFlexPreview } from '@/components/scenarios/flex-preview'
+import FlexEditor from '@/components/flex-editor'
+import { FlexTemplateGallery, type FlexTemplate } from '@/components/flex-templates-gallery'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -15,207 +17,6 @@ interface AutoReply {
   response_content: string
   is_active: number
   created_at: string
-}
-
-interface FlexTemplate {
-  id: string
-  name: string
-  description: string
-  category: 'lp' | 'card' | 'survey' | 'info' | 'carousel'
-  icon: string
-  color: string
-  json: object
-}
-
-// ─── Flex Templates Gallery ───────────────────────────────────────────────────
-
-const FLEX_TEMPLATES: FlexTemplate[] = [
-  {
-    id: 'lp-hero',
-    name: 'LP風ヒーロー',
-    description: '色付きヘッダー + ステップ説明 + CTAボタン',
-    category: 'lp',
-    icon: '📄',
-    color: '#2196F3',
-    json: {
-      type: "bubble", size: "giga",
-      header: { type: "box", layout: "vertical", paddingAll: "20px", backgroundColor: "#2196F3", contents: [
-        { type: "text", text: "タイトルを入力", color: "#ffffff", size: "xl", weight: "bold" },
-        { type: "text", text: "サブタイトルを入力", color: "#ffffffaa", size: "xs", margin: "sm" }
-      ]},
-      body: { type: "box", layout: "vertical", spacing: "lg", paddingAll: "20px", contents: [
-        { type: "text", text: "ここに説明文を入力。サービスの特徴や魅力を伝えましょう。", size: "sm", wrap: true, color: "#555555" },
-        { type: "separator" },
-        { type: "box", layout: "vertical", spacing: "md", contents: [
-          { type: "box", layout: "horizontal", spacing: "md", contents: [
-            { type: "box", layout: "vertical", width: "28px", height: "28px", cornerRadius: "14px", backgroundColor: "#2196F3", justifyContent: "center", alignItems: "center", contents: [
-              { type: "text", text: "1", color: "#ffffff", size: "sm", weight: "bold", align: "center" }
-            ]},
-            { type: "text", text: "ステップ1の説明", size: "sm", wrap: true, flex: 1 }
-          ]},
-          { type: "box", layout: "horizontal", spacing: "md", contents: [
-            { type: "box", layout: "vertical", width: "28px", height: "28px", cornerRadius: "14px", backgroundColor: "#2196F3", justifyContent: "center", alignItems: "center", contents: [
-              { type: "text", text: "2", color: "#ffffff", size: "sm", weight: "bold", align: "center" }
-            ]},
-            { type: "text", text: "ステップ2の説明", size: "sm", wrap: true, flex: 1 }
-          ]},
-          { type: "box", layout: "horizontal", spacing: "md", contents: [
-            { type: "box", layout: "vertical", width: "28px", height: "28px", cornerRadius: "14px", backgroundColor: "#2196F3", justifyContent: "center", alignItems: "center", contents: [
-              { type: "text", text: "3", color: "#ffffff", size: "sm", weight: "bold", align: "center" }
-            ]},
-            { type: "text", text: "ステップ3の説明", size: "sm", wrap: true, flex: 1 }
-          ]}
-        ]}
-      ]},
-      footer: { type: "box", layout: "vertical", spacing: "sm", paddingAll: "16px", contents: [
-        { type: "button", action: { type: "postback", label: "ボタン1", data: "action=tag&tag=example:tag1&reply=応答テキスト", displayText: "ボタン1をタップ" }, style: "primary", color: "#2196F3", height: "sm" },
-        { type: "button", action: { type: "message", label: "ボタン2", text: "キーワード" }, style: "link", height: "sm" }
-      ]}
-    }
-  },
-  {
-    id: 'info-card',
-    name: '情報カード',
-    description: 'ヘッダー + 情報一覧 + フッターボタン',
-    category: 'card',
-    icon: '💳',
-    color: '#06C755',
-    json: {
-      type: "bubble",
-      header: { type: "box", layout: "vertical", paddingAll: "20px", backgroundColor: "#06C755", contents: [
-        { type: "text", text: "カードタイトル", color: "#ffffff", size: "lg", weight: "bold" },
-        { type: "text", text: "補足テキスト", color: "#ffffffaa", size: "xs", margin: "sm" }
-      ]},
-      body: { type: "box", layout: "vertical", spacing: "md", paddingAll: "20px", contents: [
-        { type: "box", layout: "horizontal", contents: [
-          { type: "text", text: "項目A", size: "sm", flex: 1, color: "#666666" },
-          { type: "text", text: "内容A", size: "sm", weight: "bold", align: "end", flex: 1 }
-        ]},
-        { type: "separator" },
-        { type: "box", layout: "horizontal", contents: [
-          { type: "text", text: "項目B", size: "sm", flex: 1, color: "#666666" },
-          { type: "text", text: "内容B", size: "sm", weight: "bold", align: "end", flex: 1 }
-        ]},
-        { type: "separator" },
-        { type: "box", layout: "horizontal", contents: [
-          { type: "text", text: "項目C", size: "sm", flex: 1, color: "#666666" },
-          { type: "text", text: "内容C", size: "sm", weight: "bold", align: "end", flex: 1 }
-        ]},
-        { type: "separator" },
-        { type: "text", text: "補足情報を入力", size: "xs", color: "#999999", wrap: true, margin: "md" }
-      ]},
-      footer: { type: "box", layout: "vertical", spacing: "sm", paddingAll: "16px", contents: [
-        { type: "button", action: { type: "uri", label: "詳しくはこちら", uri: "https://example.com" }, style: "primary", color: "#06C755", height: "sm" }
-      ]}
-    }
-  },
-  {
-    id: 'survey-buttons',
-    name: 'アンケート風',
-    description: '質問 + 選択肢ボタン（postbackでタグ付与）',
-    category: 'survey',
-    icon: '📊',
-    color: '#9C27B0',
-    json: {
-      type: "bubble",
-      header: { type: "box", layout: "vertical", paddingAll: "20px", backgroundColor: "#9C27B0", contents: [
-        { type: "text", text: "質問タイトル", color: "#ffffff", size: "lg", weight: "bold" }
-      ]},
-      body: { type: "box", layout: "vertical", spacing: "md", paddingAll: "20px", contents: [
-        { type: "text", text: "タップで教えてください！回答はボタンを押すだけ😊", size: "sm", wrap: true, color: "#555555" },
-        { type: "separator" },
-        { type: "text", text: "あなたに合ったものをタップ👇", size: "xs", color: "#999999" }
-      ]},
-      footer: { type: "box", layout: "vertical", spacing: "sm", paddingAll: "16px", contents: [
-        { type: "box", layout: "horizontal", spacing: "sm", contents: [
-          { type: "button", action: { type: "postback", label: "選択肢A", data: "action=tag&tag=category:a&reply=Aを選んだんですね！", displayText: "Aを選択" }, style: "primary", color: "#9C27B0", height: "sm" },
-          { type: "button", action: { type: "postback", label: "選択肢B", data: "action=tag&tag=category:b&reply=Bを選んだんですね！", displayText: "Bを選択" }, style: "primary", color: "#FF9800", height: "sm" }
-        ]},
-        { type: "box", layout: "horizontal", spacing: "sm", contents: [
-          { type: "button", action: { type: "postback", label: "選択肢C", data: "action=tag&tag=category:c&reply=Cを選んだんですね！", displayText: "Cを選択" }, style: "primary", color: "#4CAF50", height: "sm" },
-          { type: "button", action: { type: "postback", label: "選択肢D", data: "action=tag&tag=category:d&reply=Dを選んだんですね！", displayText: "Dを選択" }, style: "primary", color: "#2196F3", height: "sm" }
-        ]}
-      ]}
-    }
-  },
-  {
-    id: 'simple-notify',
-    name: 'シンプル案内',
-    description: 'ヘッダー + 短い説明 + ボタン',
-    category: 'info',
-    icon: '💬',
-    color: '#455A64',
-    json: {
-      type: "bubble",
-      header: { type: "box", layout: "vertical", paddingAll: "20px", backgroundColor: "#455A64", contents: [
-        { type: "text", text: "お知らせタイトル", color: "#ffffff", size: "lg", weight: "bold" }
-      ]},
-      body: { type: "box", layout: "vertical", spacing: "md", paddingAll: "20px", contents: [
-        { type: "text", text: "ここにお知らせの内容を書いてください。簡潔にまとめましょう。", size: "sm", wrap: true, color: "#555555" }
-      ]},
-      footer: { type: "box", layout: "vertical", paddingAll: "16px", contents: [
-        { type: "button", action: { type: "message", label: "了解！", text: "了解" }, style: "primary", color: "#455A64", height: "sm" }
-      ]}
-    }
-  },
-  {
-    id: 'carousel-faq',
-    name: 'カルーセルQ&A',
-    description: 'スワイプできるQ&Aカード2枚',
-    category: 'carousel',
-    icon: '📚',
-    color: '#607D8B',
-    json: {
-      type: "carousel",
-      contents: [
-        {
-          type: "bubble",
-          header: { type: "box", layout: "vertical", paddingAll: "16px", backgroundColor: "#607D8B", contents: [
-            { type: "text", text: "Q&A 1/2", color: "#ffffff", size: "md", weight: "bold" }
-          ]},
-          body: { type: "box", layout: "vertical", spacing: "lg", paddingAll: "16px", contents: [
-            { type: "box", layout: "vertical", spacing: "sm", contents: [
-              { type: "text", text: "Q. 質問1", weight: "bold", size: "sm" },
-              { type: "text", text: "A. 回答1", size: "xs", color: "#666666", wrap: true }
-            ]},
-            { type: "separator" },
-            { type: "box", layout: "vertical", spacing: "sm", contents: [
-              { type: "text", text: "Q. 質問2", weight: "bold", size: "sm" },
-              { type: "text", text: "A. 回答2", size: "xs", color: "#666666", wrap: true }
-            ]}
-          ]}
-        },
-        {
-          type: "bubble",
-          header: { type: "box", layout: "vertical", paddingAll: "16px", backgroundColor: "#607D8B", contents: [
-            { type: "text", text: "Q&A 2/2", color: "#ffffff", size: "md", weight: "bold" }
-          ]},
-          body: { type: "box", layout: "vertical", spacing: "lg", paddingAll: "16px", contents: [
-            { type: "box", layout: "vertical", spacing: "sm", contents: [
-              { type: "text", text: "Q. 質問3", weight: "bold", size: "sm" },
-              { type: "text", text: "A. 回答3", size: "xs", color: "#666666", wrap: true }
-            ]},
-            { type: "separator" },
-            { type: "box", layout: "vertical", spacing: "sm", contents: [
-              { type: "text", text: "Q. 質問4", weight: "bold", size: "sm" },
-              { type: "text", text: "A. 回答4", size: "xs", color: "#666666", wrap: true }
-            ]}
-          ]},
-          footer: { type: "box", layout: "vertical", paddingAll: "12px", contents: [
-            { type: "button", action: { type: "message", label: "他にも質問する", text: "質問があります" }, style: "primary", color: "#607D8B", height: "sm" }
-          ]}
-        }
-      ]
-    }
-  },
-]
-
-const categoryLabels: Record<string, string> = {
-  lp: 'LP風',
-  card: 'カード',
-  survey: 'アンケート',
-  info: 'シンプル',
-  carousel: 'カルーセル',
 }
 
 // ─── Page Component ───────────────────────────────────────────────────────────
@@ -235,6 +36,10 @@ export default function AutoRepliesPage() {
   const [editorJsonError, setEditorJsonError] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+
+  // Visual editor
+  const [editorMode, setEditorMode] = useState<'visual' | 'json'>('visual')
+  const [flexJson, setFlexJson] = useState<Record<string, unknown> | null>(null)
 
   // Template gallery
   const [showTemplates, setShowTemplates] = useState(false)
@@ -265,11 +70,18 @@ export default function AutoRepliesPage() {
     setIsCreating(true)
     setEditorKeyword('')
     setEditorMatchType('exact')
-    setEditorResponseType(template ? 'flex' : 'flex')
-    setEditorContent(template ? JSON.stringify(template.json, null, 2) : '')
+    setEditorResponseType('flex')
+    const content = template ? JSON.stringify(template.json, null, 2) : ''
+    setEditorContent(content)
     setEditorJsonError('')
     setSaveError('')
     setShowTemplates(false)
+    setEditorMode('visual')
+    if (template) {
+      setFlexJson(template.json as Record<string, unknown>)
+    } else {
+      setFlexJson(null)
+    }
   }
 
   const openEdit = (rule: AutoReply) => {
@@ -278,18 +90,24 @@ export default function AutoRepliesPage() {
     setEditorKeyword(rule.keyword)
     setEditorMatchType(rule.match_type)
     setEditorResponseType(rule.response_type)
-    // Pretty-print JSON for flex
     if (rule.response_type === 'flex') {
       try {
-        setEditorContent(JSON.stringify(JSON.parse(rule.response_content), null, 2))
+        const parsed = JSON.parse(rule.response_content)
+        setEditorContent(JSON.stringify(parsed, null, 2))
+        setFlexJson(parsed)
         setEditorJsonError('')
+        setEditorMode('visual')
       } catch {
         setEditorContent(rule.response_content)
+        setFlexJson(null)
         setEditorJsonError('JSONパースエラー')
+        setEditorMode('json')
       }
     } else {
       setEditorContent(rule.response_content)
+      setFlexJson(null)
       setEditorJsonError('')
+      setEditorMode('json')
     }
     setSaveError('')
     setShowTemplates(false)
@@ -304,7 +122,6 @@ export default function AutoRepliesPage() {
     if (!editorKeyword.trim()) { setSaveError('キーワードを入力してください'); return }
     if (!editorContent.trim()) { setSaveError('応答内容を入力してください'); return }
 
-    // Validate JSON for flex
     if (editorResponseType === 'flex') {
       try { JSON.parse(editorContent) } catch {
         setSaveError('Flex JSONの形式が不正です')
@@ -371,12 +188,38 @@ export default function AutoRepliesPage() {
     }
   }
 
-  // ─── JSON content change with validation ───
+  // ─── Content change handlers ───
+
   const handleContentChange = (val: string) => {
     setEditorContent(val)
     if (editorResponseType === 'flex') {
-      try { JSON.parse(val); setEditorJsonError('') }
-      catch (e) { setEditorJsonError(String(e).split('\n')[0]) }
+      try {
+        const parsed = JSON.parse(val)
+        setEditorJsonError('')
+        setFlexJson(parsed)
+      } catch (e) {
+        setEditorJsonError(String(e).split('\n')[0])
+      }
+    }
+  }
+
+  const handleFlexEditorChange = (newJson: Record<string, unknown>) => {
+    setFlexJson(newJson)
+    setEditorContent(JSON.stringify(newJson, null, 2))
+    setEditorJsonError('')
+  }
+
+  const handleResponseTypeChange = (type: string) => {
+    setEditorResponseType(type)
+    if (type === 'flex') {
+      setEditorMode('visual')
+      if (!flexJson && editorContent) {
+        try { setFlexJson(JSON.parse(editorContent)) } catch { /* noop */ }
+      }
+    } else {
+      setEditorMode('json')
+      setFlexJson(null)
+      setEditorJsonError('')
     }
   }
 
@@ -415,47 +258,7 @@ export default function AutoRepliesPage() {
 
       {/* ─── Template Gallery Modal ─── */}
       {showTemplates && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowTemplates(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-6 py-4 border-b">
-              <div>
-                <h2 className="text-lg font-bold text-gray-900">テンプレートギャラリー</h2>
-                <p className="text-sm text-gray-500">テンプレートを選んで、内容をカスタマイズしてください</p>
-              </div>
-              <button onClick={() => setShowTemplates(false)} className="text-gray-400 hover:text-gray-600 text-xl p-2">✕</button>
-            </div>
-            <div className="p-6 overflow-y-auto max-h-[70vh]">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {FLEX_TEMPLATES.map((t) => (
-                  <div
-                    key={t.id}
-                    className="border border-gray-200 rounded-xl overflow-hidden hover:border-gray-400 hover:shadow-md transition-all cursor-pointer group"
-                    onClick={() => openCreate(t)}
-                  >
-                    <div className="p-4" style={{ backgroundColor: t.color + '10' }}>
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className="text-2xl">{t.icon}</span>
-                        <div>
-                          <p className="font-semibold text-gray-900 text-sm">{t.name}</p>
-                          <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: t.color + '20', color: t.color }}>{categoryLabels[t.category]}</span>
-                        </div>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">{t.description}</p>
-                    </div>
-                    <div className="p-3 bg-gray-50 border-t" style={{ maxHeight: '200px', overflow: 'hidden' }}>
-                      <div className="transform scale-[0.6] origin-top-left" style={{ width: '166%' }}>
-                        <InlineFlexPreview content={JSON.stringify(t.json)} />
-                      </div>
-                    </div>
-                    <div className="px-4 py-3 bg-white border-t text-center">
-                      <span className="text-xs font-medium text-green-600 group-hover:text-green-700">このテンプレートで作成 →</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+        <FlexTemplateGallery onSelect={openCreate} onClose={() => setShowTemplates(false)} />
       )}
 
       {/* ─── Editor Modal ─── */}
@@ -471,8 +274,8 @@ export default function AutoRepliesPage() {
             {/* Body: 2 column layout */}
             <div className="flex flex-1 overflow-hidden">
               {/* Left: Editor */}
-              <div className="flex-1 p-6 overflow-y-auto border-r">
-                <div className="space-y-4 max-w-lg">
+              <div className="flex-1 overflow-y-auto border-r">
+                <div className="p-6 space-y-4 max-w-lg">
                   {/* Keyword */}
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1">キーワード <span className="text-red-500">*</span></label>
@@ -492,7 +295,7 @@ export default function AutoRepliesPage() {
                       <select
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500"
                         value={editorMatchType}
-                        onChange={(e) => setEditorMatchType(e.target.value as 'exact' | 'contains')}
+                        onChange={(e) => setEditorMatchType(e.target.value)}
                       >
                         <option value="exact">完全一致</option>
                         <option value="contains">部分一致</option>
@@ -503,51 +306,87 @@ export default function AutoRepliesPage() {
                       <select
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500"
                         value={editorResponseType}
-                        onChange={(e) => setEditorResponseType(e.target.value as 'text' | 'flex')}
+                        onChange={(e) => handleResponseTypeChange(e.target.value)}
                       >
                         <option value="flex">Flex Message</option>
                         <option value="text">テキスト</option>
                       </select>
                     </div>
                   </div>
+                </div>
 
-                  {/* Content editor */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs font-medium text-gray-600">
-                        {editorResponseType === 'flex' ? 'Flex JSON' : 'テキスト'} <span className="text-red-500">*</span>
-                      </label>
-                      {editorJsonError && <span className="text-xs text-red-500">{editorJsonError}</span>}
-                      {editorResponseType === 'flex' && !editorJsonError && editorContent && (
-                        <span className="text-xs text-green-600">✓ 有効なJSON</span>
-                      )}
+                {/* Flex: mode toggle + editor */}
+                {editorResponseType === 'flex' && (
+                  <div className="border-t">
+                    <div className="flex items-center gap-2 px-6 py-2 bg-gray-50 border-b">
+                      <button
+                        onClick={() => setEditorMode('visual')}
+                        className={`px-3 py-1 text-xs rounded-full ${
+                          editorMode === 'visual' ? 'bg-green-100 text-green-700 font-medium' : 'text-gray-500 hover:bg-gray-100'
+                        }`}
+                      >
+                        ビジュアル
+                      </button>
+                      <button
+                        onClick={() => setEditorMode('json')}
+                        className={`px-3 py-1 text-xs rounded-full ${
+                          editorMode === 'json' ? 'bg-green-100 text-green-700 font-medium' : 'text-gray-500 hover:bg-gray-100'
+                        }`}
+                      >
+                        JSON
+                      </button>
+                      {editorJsonError && <span className="text-xs text-red-500 ml-2">{editorJsonError}</span>}
+                      {!editorJsonError && editorContent && <span className="text-xs text-green-600 ml-2">✓ 有効</span>}
                     </div>
+
+                    {editorMode === 'visual' && flexJson ? (
+                      <div className="h-[400px] overflow-hidden">
+                        <FlexEditor json={flexJson} onChange={handleFlexEditorChange} />
+                      </div>
+                    ) : (
+                      <div className="p-6">
+                        <textarea
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+                          rows={20}
+                          placeholder={editorResponseType === 'flex' ? '{\n  "type": "bubble",\n  ...\n}' : 'メッセージ内容を入力'}
+                          value={editorContent}
+                          onChange={(e) => handleContentChange(e.target.value)}
+                          style={{ lineHeight: '1.5' }}
+                        />
+                        <p className="text-xs text-gray-400 mt-1">{editorContent.length.toLocaleString()} 文字</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Text content */}
+                {editorResponseType === 'text' && (
+                  <div className="px-6 pb-6">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">テキスト <span className="text-red-500">*</span></label>
                     <textarea
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
-                      rows={20}
-                      placeholder={editorResponseType === 'flex' ? '{\n  "type": "bubble",\n  ...\n}' : 'メッセージ内容を入力'}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+                      rows={8}
+                      placeholder="メッセージ内容を入力"
                       value={editorContent}
                       onChange={(e) => handleContentChange(e.target.value)}
-                      style={{ lineHeight: '1.5' }}
                     />
-                    <p className="text-xs text-gray-400 mt-1">{editorContent.length.toLocaleString()} 文字</p>
                   </div>
+                )}
 
-                  {/* Postback helper */}
-                  {editorResponseType === 'flex' && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                      <p className="text-xs font-medium text-blue-700 mb-1">💡 postbackボタンの書き方</p>
-                      <code className="text-[10px] text-blue-600 block whitespace-pre-wrap">{`"action": {
+                {/* Postback helper */}
+                {editorResponseType === 'flex' && editorMode === 'json' && (
+                  <div className="mx-6 mb-6 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p className="text-xs font-medium text-blue-700 mb-1">postbackボタンの書き方</p>
+                    <code className="text-[10px] text-blue-600 block whitespace-pre-wrap">{`"action": {
   "type": "postback",
   "label": "ボタン名",
   "data": "action=tag&tag=タグ名&reply=応答テキスト&notify=true",
   "displayText": "ユーザーに表示されるテキスト"
 }`}</code>
-                    </div>
-                  )}
+                  </div>
+                )}
 
-                  {saveError && <p className="text-sm text-red-600">{saveError}</p>}
-                </div>
+                {saveError && <p className="px-6 pb-4 text-sm text-red-600">{saveError}</p>}
               </div>
 
               {/* Right: Preview */}
@@ -628,7 +467,6 @@ export default function AutoRepliesPage() {
                     </div>
                     <p className="text-base font-semibold text-gray-900 mb-1">「{rule.keyword}」</p>
 
-                    {/* Mini preview */}
                     {rule.response_type === 'flex' && (
                       <button
                         onClick={() => setPreviewRule(previewRule === rule.id ? null : rule.id)}
@@ -649,30 +487,29 @@ export default function AutoRepliesPage() {
                       disabled={sendingTest === rule.id}
                       className="text-xs text-blue-600 hover:text-blue-700 px-2 py-1 rounded hover:bg-blue-50 transition-colors min-h-[36px] flex items-center disabled:opacity-50"
                     >
-                      {sendingTest === rule.id ? '送信中...' : '📤 テスト'}
+                      {sendingTest === rule.id ? '送信中...' : 'テスト'}
                     </button>
                     <button
                       onClick={() => toggleActive(rule)}
                       className={`text-xs px-2 py-1 rounded transition-colors min-h-[36px] flex items-center ${rule.is_active ? 'text-yellow-600 hover:bg-yellow-50' : 'text-green-600 hover:bg-green-50'}`}
                     >
-                      {rule.is_active ? '⏸ 無効化' : '▶ 有効化'}
+                      {rule.is_active ? '無効化' : '有効化'}
                     </button>
                     <button
                       onClick={() => openEdit(rule)}
                       className="text-xs text-green-600 hover:text-green-700 px-2 py-1 rounded hover:bg-green-50 transition-colors min-h-[36px] flex items-center"
                     >
-                      ✏️ 編集
+                      編集
                     </button>
                     <button
                       onClick={() => deleteRule(rule.id, rule.keyword)}
                       className="text-xs text-red-500 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50 transition-colors min-h-[36px] flex items-center"
                     >
-                      🗑️
+                      削除
                     </button>
                   </div>
                 </div>
 
-                {/* Test result */}
                 {testResult && testResult.id === rule.id && (
                   <div className={`mt-2 text-xs px-3 py-1.5 rounded-md ${testResult.ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
                     {testResult.msg}
@@ -680,7 +517,6 @@ export default function AutoRepliesPage() {
                 )}
               </div>
 
-              {/* Expanded preview */}
               {previewRule === rule.id && rule.response_type === 'flex' && (
                 <div className="border-t bg-gray-50 p-4">
                   <div className="bg-[#7494C0] rounded-2xl p-4 max-w-[340px] mx-auto">
@@ -695,4 +531,3 @@ export default function AutoRepliesPage() {
     </div>
   )
 }
-// auto-replies page v1
