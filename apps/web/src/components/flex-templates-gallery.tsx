@@ -196,6 +196,109 @@ export const FLEX_TEMPLATES: FlexTemplate[] = [
       ]
     }
   },
+  {
+    id: 'hero-image-card',
+    name: '画像付きカード',
+    description: 'ヒーロー画像 + 説明 + CTAボタン',
+    category: 'card',
+    icon: '🖼',
+    color: '#E91E63',
+    json: {
+      type: "bubble",
+      hero: {
+        type: "image",
+        url: "https://placehold.co/900x400/E91E63/white?text=Hero+Image",
+        size: "full",
+        aspectRatio: "20:13",
+        aspectMode: "cover",
+      },
+      body: { type: "box", layout: "vertical", spacing: "md", paddingAll: "20px", contents: [
+        { type: "text", text: "タイトルを入力", weight: "bold", size: "lg" },
+        { type: "text", text: "ここに説明文を入力。画像と組み合わせることで、視覚的に訴求力のあるメッセージを作れます。", size: "sm", wrap: true, color: "#555555" },
+      ]},
+      footer: { type: "box", layout: "vertical", spacing: "sm", paddingAll: "16px", contents: [
+        { type: "button", action: { type: "uri", label: "詳しく見る", uri: "https://example.com" }, style: "primary", color: "#E91E63", height: "sm" },
+        { type: "button", action: { type: "message", label: "興味あり", text: "興味あり" }, style: "link", height: "sm" },
+      ]}
+    }
+  },
+  {
+    id: 'product-showcase',
+    name: '商品紹介',
+    description: '商品画像 + 価格情報 + 購入ボタン',
+    category: 'card',
+    icon: '🛍',
+    color: '#FF5722',
+    json: {
+      type: "bubble",
+      hero: {
+        type: "image",
+        url: "https://placehold.co/900x600/FF5722/white?text=Product+Photo",
+        size: "full",
+        aspectRatio: "3:2",
+        aspectMode: "cover",
+      },
+      body: { type: "box", layout: "vertical", spacing: "md", paddingAll: "20px", contents: [
+        { type: "text", text: "商品名", weight: "bold", size: "lg" },
+        { type: "box", layout: "horizontal", contents: [
+          { type: "text", text: "価格", size: "sm", flex: 1, color: "#666666" },
+          { type: "text", text: "¥3,980", size: "lg", weight: "bold", align: "end", flex: 1, color: "#FF5722" }
+        ]},
+        { type: "separator" },
+        { type: "text", text: "商品の説明をここに入力。特徴やおすすめポイントを記載してください。", size: "xs", wrap: true, color: "#999999" }
+      ]},
+      footer: { type: "box", layout: "vertical", spacing: "sm", paddingAll: "16px", contents: [
+        { type: "button", action: { type: "uri", label: "購入する", uri: "https://example.com/buy" }, style: "primary", color: "#FF5722", height: "sm" },
+        { type: "button", action: { type: "postback", label: "お気に入り", data: "action=tag&tag=favorite&reply=お気に入りに追加しました！", displayText: "お気に入り" }, style: "link", height: "sm" },
+      ]}
+    }
+  },
+  {
+    id: 'image-carousel',
+    name: '画像カルーセル',
+    description: 'スワイプできる画像カード3枚',
+    category: 'carousel',
+    icon: '🎠',
+    color: '#009688',
+    json: {
+      type: "carousel",
+      contents: [
+        {
+          type: "bubble",
+          hero: { type: "image", url: "https://placehold.co/900x600/009688/white?text=Image+1", size: "full", aspectRatio: "3:2", aspectMode: "cover" },
+          body: { type: "box", layout: "vertical", spacing: "sm", paddingAll: "16px", contents: [
+            { type: "text", text: "カード1タイトル", weight: "bold", size: "md" },
+            { type: "text", text: "説明テキスト", size: "xs", color: "#666666", wrap: true },
+          ]},
+          footer: { type: "box", layout: "vertical", paddingAll: "12px", contents: [
+            { type: "button", action: { type: "postback", label: "選択", data: "action=select&item=1&reply=カード1を選択しました", displayText: "カード1を選択" }, style: "primary", color: "#009688", height: "sm" }
+          ]}
+        },
+        {
+          type: "bubble",
+          hero: { type: "image", url: "https://placehold.co/900x600/00BCD4/white?text=Image+2", size: "full", aspectRatio: "3:2", aspectMode: "cover" },
+          body: { type: "box", layout: "vertical", spacing: "sm", paddingAll: "16px", contents: [
+            { type: "text", text: "カード2タイトル", weight: "bold", size: "md" },
+            { type: "text", text: "説明テキスト", size: "xs", color: "#666666", wrap: true },
+          ]},
+          footer: { type: "box", layout: "vertical", paddingAll: "12px", contents: [
+            { type: "button", action: { type: "postback", label: "選択", data: "action=select&item=2&reply=カード2を選択しました", displayText: "カード2を選択" }, style: "primary", color: "#00BCD4", height: "sm" }
+          ]}
+        },
+        {
+          type: "bubble",
+          hero: { type: "image", url: "https://placehold.co/900x600/4CAF50/white?text=Image+3", size: "full", aspectRatio: "3:2", aspectMode: "cover" },
+          body: { type: "box", layout: "vertical", spacing: "sm", paddingAll: "16px", contents: [
+            { type: "text", text: "カード3タイトル", weight: "bold", size: "md" },
+            { type: "text", text: "説明テキスト", size: "xs", color: "#666666", wrap: true },
+          ]},
+          footer: { type: "box", layout: "vertical", paddingAll: "12px", contents: [
+            { type: "button", action: { type: "postback", label: "選択", data: "action=select&item=3&reply=カード3を選択しました", displayText: "カード3を選択" }, style: "primary", color: "#4CAF50", height: "sm" }
+          ]}
+        },
+      ]
+    }
+  },
 ]
 
 const categoryLabels: Record<string, string> = {
