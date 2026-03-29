@@ -503,6 +503,19 @@ export const api = {
     getMigration: (migrationId: string) =>
       fetchApi<ApiResponse<AccountMigration>>(`/api/accounts/migrations/${migrationId}`),
   },
+  images: {
+    upload: (base64: string, filename?: string, contentType?: string) =>
+      fetchApi<ApiResponse<{ id: string; url: string; filename: string; contentType: string; sizeBytes: number }>>(
+        '/api/images/upload',
+        { method: 'POST', body: JSON.stringify({ image: base64, filename, contentType }) },
+      ),
+    list: () =>
+      fetchApi<ApiResponse<{ id: string; url: string; filename: string; contentType: string; sizeBytes: number; createdAt: string }[]>>(
+        '/api/images',
+      ),
+    delete: (id: string) =>
+      fetchApi<ApiResponse<null>>(`/api/images/${id}`, { method: 'DELETE' }),
+  },
   richMenus: {
     list: () =>
       fetchApi<ApiResponse<any[]>>('/api/rich-menus'),

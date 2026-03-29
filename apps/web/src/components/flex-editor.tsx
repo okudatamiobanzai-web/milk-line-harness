@@ -5,7 +5,8 @@
  * GUI for editing LINE Flex Message JSON — text, colors, buttons, images, structure.
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
+import { api } from '@/lib/api'
 
 type FlexNode = Record<string, unknown>
 
@@ -235,13 +236,71 @@ function ButtonNodeEditor({ node, onChange }: { node: FlexNode; onChange: (field
 }
 
 function ImageNodeEditor({ node, onChange }: { node: FlexNode; onChange: (field: string, value: unknown) => void }) {
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState('')
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (file.size > 2 * 1024 * 1024) {
+      setUploadError('2MB以下の画像を選択してください')
+      return
+    }
+
+    setUploading(true)
+    setUploadError('')
+    try {
+      const reader = new FileReader()
+      const base64 = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string)
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+
+      const res = await api.images.upload(base64, file.name, file.type)
+      if (res.success) {
+        onChange('url', res.data.url)
+      } else {
+        setUploadError(res.error || 'アップロード失敗')
+      }
+    } catch {
+      setUploadError('アップロードに失敗しました')
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
   return (
     <div className="space-y-3">
+      {/* Upload button */}
       <div>
-        <label className="block text-xs font-medium text-gray-600 mb-1">画像URL</label>
+        <label className="block text-xs font-medium text-gray-600 mb-1">画像</label>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="flex-1 px-3 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-50 hover:opacity-90 transition-opacity"
+            style={{ backgroundColor: '#06C755' }}
+          >
+            {uploading ? 'アップロード中...' : '画像をアップロード'}
+          </button>
+          <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
+        </div>
+        {uploadError && <p className="text-xs text-red-500 mt-1">{uploadError}</p>}
+        <p className="text-[10px] text-gray-400 mt-1">JPEG, PNG, GIF, WebP / 2MB以下</p>
+      </div>
+
+      {/* URL input */}
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">または画像URLを直接入力</label>
         <input type="text" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
           placeholder="https://example.com/image.jpg" value={String(node.url || '')} onChange={(e) => onChange('url', e.target.value)} />
       </div>
+
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">サイズ</label>
