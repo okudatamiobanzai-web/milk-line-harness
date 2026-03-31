@@ -22,6 +22,7 @@ import type {
   Notification,
   AccountHealthLog,
   AccountMigration,
+  AiKnowledge,
 } from '@line-crm/shared'
 
 import type { Broadcast } from '@line-crm/shared'
@@ -358,7 +359,7 @@ export const api = {
       )
     },
     get: (id: string) =>
-      fetchApi<ApiResponse<Chat & { messages?: { id: string; content: string; senderType: string; createdAt: string }[] }>>(
+      fetchApi<ApiResponse<Chat & { messages?: { id: string; direction: 'incoming' | 'outgoing'; messageType: string; content: string; createdAt: string }[] }>>(
         `/api/chats/${id}`,
       ),
     create: (data: { friendId: string; operatorId?: string | null }) =>
@@ -502,6 +503,35 @@ export const api = {
       }),
     getMigration: (migrationId: string) =>
       fetchApi<ApiResponse<AccountMigration>>(`/api/accounts/migrations/${migrationId}`),
+  },
+  images: {
+    upload: (base64: string, filename?: string, contentType?: string) =>
+      fetchApi<ApiResponse<{ id: string; url: string; filename: string; contentType: string; sizeBytes: number }>>(
+        '/api/images/upload',
+        { method: 'POST', body: JSON.stringify({ image: base64, filename, contentType }) },
+      ),
+    list: () =>
+      fetchApi<ApiResponse<{ id: string; url: string; filename: string; contentType: string; sizeBytes: number; createdAt: string }[]>>(
+        '/api/images',
+      ),
+    delete: (id: string) =>
+      fetchApi<ApiResponse<null>>(`/api/images/${id}`, { method: 'DELETE' }),
+  },
+  aiKnowledge: {
+    list: () =>
+      fetchApi<ApiResponse<AiKnowledge[]>>('/api/ai-knowledge'),
+    create: (data: { category?: string; questionPattern: string; wrongAnswer?: string; correctAnswer: string }) =>
+      fetchApi<ApiResponse<AiKnowledge>>('/api/ai-knowledge', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    update: (id: string, data: { category?: string; questionPattern?: string; wrongAnswer?: string; correctAnswer?: string; isActive?: boolean }) =>
+      fetchApi<ApiResponse<AiKnowledge>>(`/api/ai-knowledge/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+    delete: (id: string) =>
+      fetchApi<ApiResponse<null>>(`/api/ai-knowledge/${id}`, { method: 'DELETE' }),
   },
   richMenus: {
     list: () =>

@@ -687,3 +687,18 @@ export interface PaginatedResponse<T> {
   /** 次ページが存在するか */
   hasNextPage: boolean;
 }
+
+// -----------------------------------------------------------------------------
+// AIナレッジ (AI Knowledge)
+// -----------------------------------------------------------------------------
+
+export interface AiKnowledge {
+  id: string;
+  category: "correction" | "fact" | "rule";
+  question_pattern: string;
+  wrong_answer: string | null;
+  correct_answer: string;
+  is_active: number;
+  created_at: string;
+  updated_at: string;
+}

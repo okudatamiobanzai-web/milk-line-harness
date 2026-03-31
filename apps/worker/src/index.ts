@@ -33,6 +33,8 @@ import { richMenus } from './routes/rich-menus.js';
 import { trackedLinks } from './routes/tracked-links.js';
 import { forms } from './routes/forms.js';
 import { ops } from './routes/ops.js';
+import { images } from './routes/images.js';
+import { aiKnowledge } from './routes/ai-knowledge.js';
 
 export type Env = {
   Bindings: {
@@ -85,6 +87,8 @@ app.route('/', richMenus);
 app.route('/', trackedLinks);
 app.route('/', forms);
 app.route('/', ops);
+app.route('/', images);
+app.route('/', aiKnowledge);
 
 // Short link: /r/:ref → landing page with LINE open button
 app.get('/r/:ref', (c) => {
