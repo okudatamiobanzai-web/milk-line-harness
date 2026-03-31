@@ -139,6 +139,7 @@ function DirectMessagePanel({ friendId, friend, onBack, onSent }: {
   }
 
   function renderContent(msg: MessageLog) {
+    if (msg.messageType === 'postback') return null
     if (msg.messageType === 'text') return msg.content
     if (msg.messageType === 'flex') {
       try {
@@ -191,7 +192,7 @@ function DirectMessagePanel({ friendId, friend, onBack, onSent }: {
         ) : messages.length === 0 ? (
           <p className="text-center text-gray-400 text-sm">メッセージ履歴がありません</p>
         ) : (
-          messages.map((msg) => (
+          messages.filter((msg) => msg.messageType !== 'postback').map((msg) => (
             <div key={msg.id} className={`flex ${msg.direction === 'outgoing' ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[75%] rounded-2xl px-4 py-2 ${
                 msg.direction === 'outgoing'
@@ -549,6 +550,9 @@ export default function ChatsPage() {
                 ) : (
                   (chatDetail.messages ?? []).map((msg) => {
                     const isOutgoing = msg.direction === 'outgoing'
+
+                    // ポストバックは非表示（生データなので）
+                    if (msg.messageType === 'postback') return null
 
                     // メッセージ表示の分岐
                     let bubbleContent: React.ReactNode

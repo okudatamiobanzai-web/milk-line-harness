@@ -441,6 +441,11 @@ async function handleEvent(
       if (event.replyToken) {
         try {
           await lineClient.replyMessage(event.replyToken, [{ type: 'text', text: replyText }]);
+          // 返信ログを記録
+          await db.prepare(
+            `INSERT INTO messages_log (id, friend_id, direction, message_type, content, created_at)
+             VALUES (?, ?, 'outgoing', 'text', ?, ?)`
+          ).bind(crypto.randomUUID(), friend.id, replyText, jstNow()).run();
         } catch (e) {
           console.error('Postback reply error:', e);
         }
