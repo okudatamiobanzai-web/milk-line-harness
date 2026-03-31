@@ -650,7 +650,7 @@ async function handleEvent(
     // AI自動応答（キーワード未マッチ時）
     if (!matched && event.replyToken && anthropicKey) {
       try {
-        const aiReply = await generateAiReply(incomingText, anthropicKey, friend.display_name);
+        const aiReply = await generateAiReply(incomingText, anthropicKey, friend.display_name, c.env.DB);
         if (aiReply) {
           await lineClient.replyMessage(event.replyToken, [{ type: 'text', text: aiReply }]);
           const aiLogId = crypto.randomUUID();
